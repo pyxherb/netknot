@@ -34,10 +34,28 @@ namespace netknot {
 		Interrupted,
 	};
 
-	class AsyncTask : public peff::RcObject {
+	class AsyncTask {
+	private:
+		std::atomic_size_t _refCount = 0;
+
 	public:
 		NETKNOT_API AsyncTask();
 		NETKNOT_API ~AsyncTask();
+
+		virtual void onRefZero() noexcept = 0;
+
+		NETKNOT_FORCEINLINE size_t incRef(size_t globalRc) noexcept {
+			return ++_refCount;
+		}
+
+		NETKNOT_FORCEINLINE size_t decRef(size_t globalRc) noexcept {
+			if (!--_refCount) {
+				onRefZero();
+				return 0;
+			}
+
+			return _refCount;
+		}
 
 		virtual AsyncTaskStatus getStatus() = 0;
 		virtual ExceptionPointer &getException() = 0;
@@ -46,7 +64,7 @@ namespace netknot {
 	class ReadAsyncTask : public AsyncTask {
 	public:
 		NETKNOT_API ReadAsyncTask();
-		NETKNOT_API ~ReadAsyncTask();
+		NETKNOT_API virtual ~ReadAsyncTask();
 
 		virtual size_t getCurrentReadSize() = 0;
 		virtual size_t getExpectedReadSize() = 0;
@@ -55,7 +73,7 @@ namespace netknot {
 	class WriteAsyncTask : public AsyncTask {
 	public:
 		NETKNOT_API WriteAsyncTask();
-		NETKNOT_API ~WriteAsyncTask();
+		NETKNOT_API virtual ~WriteAsyncTask();
 
 		virtual size_t getCurrentWrittenSize() = 0;
 		virtual size_t getExpectedWrittenSize() = 0;
@@ -64,7 +82,7 @@ namespace netknot {
 	class AcceptAsyncTask : public AsyncTask {
 	public:
 		NETKNOT_API AcceptAsyncTask();
-		NETKNOT_API ~AcceptAsyncTask();
+		NETKNOT_API virtual ~AcceptAsyncTask();
 
 		virtual Address &getAcceptedAddress() = 0;
 	};
@@ -82,7 +100,7 @@ namespace netknot {
 	class WriteAsyncCallback {
 	public:
 		NETKNOT_API WriteAsyncCallback();
-		NETKNOT_API ~WriteAsyncCallback();
+		NETKNOT_API virtual ~WriteAsyncCallback();
 
 		virtual void dealloc() noexcept = 0;
 
@@ -92,7 +110,7 @@ namespace netknot {
 	class AcceptAsyncCallback {
 	public:
 		NETKNOT_API AcceptAsyncCallback();
-		NETKNOT_API ~AcceptAsyncCallback();
+		NETKNOT_API virtual ~AcceptAsyncCallback();
 
 		virtual void dealloc() noexcept = 0;
 
@@ -104,12 +122,20 @@ namespace netknot {
 		NETKNOT_API Socket();
 		NETKNOT_API virtual ~Socket();
 
+		virtual void dealloc() noexcept = 0;
+
+		virtual void close() = 0;
+
+		virtual ExceptionPointer bind(const Address &address) = 0;
+		virtual ExceptionPointer listen(size_t backlog) = 0;
+		virtual ExceptionPointer connect(const Address &address) = 0;
+
 		virtual ExceptionPointer read(char *buffer, size_t size, size_t &szReadOut) = 0;
 		virtual ExceptionPointer write(const char *buffer, size_t size, size_t &szWrittenOut) = 0;
 		virtual ExceptionPointer accept(Address &addressOut) = 0;
 
-		virtual ReadAsyncTask *readAsync(peff::Alloc *allocator, RcBuffer *buffer, ReadAsyncCallback *callback) = 0;
-		virtual WriteAsyncTask *writeAsync(peff::Alloc *allocator, const RcBuffer *buffer, WriteAsyncCallback *callback) = 0;
+		virtual ReadAsyncTask *readAsync(peff::Alloc *allocator, const RcBufferRef &buffer, ReadAsyncCallback *callback) = 0;
+		virtual WriteAsyncTask *writeAsync(peff::Alloc *allocator, const RcBufferRef &buffer, WriteAsyncCallback *callback) = 0;
 		virtual AcceptAsyncTask *acceptAsync(peff::Alloc *allocator) = 0;
 	};
 }

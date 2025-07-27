@@ -1,9 +1,9 @@
-#include "async_buffer.h"
+#include "rc_buffer.h"
 
 using namespace netknot;
 
-NETKNOT_API AsyncBuffer::AsyncBuffer(char *data, size_t size) : data(data), size(size) {
+NETKNOT_API RcBuffer::RcBuffer(char *data, size_t size) : data(data), size(size) {
 }
 
-NETKNOT_API AsyncBuffer::~AsyncBuffer() {
+NETKNOT_API RcBuffer::~RcBuffer() {
 }

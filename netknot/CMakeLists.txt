@@ -27,6 +27,10 @@ set_target_properties(netknot_static PROPERTIES
     VERSION ${PROJECT_VERSION}
 )
 
+if(WIN32)
+    add_subdirectory("win")
+endif()
+
 install(TARGETS netknot netknot_static
     EXPORT netknotTargets
     LIBRARY DESTINATION lib/
