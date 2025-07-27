@@ -65,7 +65,6 @@ NETKNOT_API void Win32Socket::close() {
 }
 
 NETKNOT_API ExceptionPointer Win32Socket::bind(const Address& address) {
-
 }
 
 NETKNOT_API ExceptionPointer Win32Socket::listen(size_t backlog) {

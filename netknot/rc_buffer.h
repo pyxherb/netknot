@@ -13,8 +13,8 @@ namespace netknot {
 		NETKNOT_API RcBuffer(char *data, size_t size);
 		NETKNOT_API virtual ~RcBuffer();
 
-		virtual size_t incRef() = 0;
-		virtual size_t decRef() = 0;
+		virtual size_t incRef(size_t globalRc) = 0;
+		virtual size_t decRef(size_t globalRc) = 0;
 	};
 
 	struct RcBufferRef final {
