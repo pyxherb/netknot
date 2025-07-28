@@ -2,6 +2,12 @@
 
 using namespace netknot;
 
+NETKNOT_API CompiledAddress::CompiledAddress() {
+}
+
+NETKNOT_API CompiledAddress::~CompiledAddress() {
+}
+
 NETKNOT_API AsyncTask::AsyncTask() {
 }
 
@@ -42,12 +48,6 @@ NETKNOT_API AcceptAsyncCallback::AcceptAsyncCallback() {
 }
 
 NETKNOT_API AcceptAsyncCallback::~AcceptAsyncCallback() {
-}
-
-NETKNOT_API AddressCompiler::AddressCompiler() {
-}
-
-NETKNOT_API AddressCompiler::~AddressCompiler() {
 }
 
 NETKNOT_API Socket::Socket() {

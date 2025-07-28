@@ -27,6 +27,14 @@ namespace netknot {
 		NETKNOT_FORCEINLINE IPv4Address(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint16_t port) : Address(ADDRFAM_IPV4), a(a), b(b), c(c), d(d), port(port) {}
 	};
 
+	class CompiledAddress {
+	public:
+		NETKNOT_API CompiledAddress();
+		NETKNOT_API virtual ~CompiledAddress();
+
+		virtual void dealloc() = 0;
+	};
+
 	enum class AsyncTaskStatus {
 		Ready = 0,
 		Running,
