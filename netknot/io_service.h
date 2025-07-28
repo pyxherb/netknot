@@ -12,6 +12,8 @@ namespace netknot {
 		NETKNOT_API ~IOServiceCreationParams();
 	};
 
+	typedef ExceptionPointer (*AddressCompiler)(peff::Alloc *allocator, const Address &address, char *&bufferOut, size_t &szBufferOut);
+
 	class IOService {
 	public:
 		NETKNOT_API IOService();
@@ -22,6 +24,10 @@ namespace netknot {
 		virtual void run() = 0;
 
 		virtual ExceptionPointer createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType) = 0;
+
+		virtual ExceptionPointer compileAddress(peff::Alloc *allocator, const Address &address, char *&bufferOut, size_t &szBufferOut) = 0;
+		virtual ExceptionPointer registerAddressCompiler(const peff::UUID &addressFamily, AddressCompiler addressCompiler) = 0;
+		virtual ExceptionPointer unregisterAddressCompiler(const peff::UUID &addressFamily) = 0;
 	};
 
 	ExceptionPointer createDefaultIOService(IOService *&ioServiceOut, const IOServiceCreationParams &params) noexcept;

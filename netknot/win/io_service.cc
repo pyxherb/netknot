@@ -27,7 +27,10 @@ NETKNOT_API void Win32IOService::run() {
 NETKNOT_API ExceptionPointer Win32IOService::createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType) {
 }
 
-ExceptionPointer netknot::createDefaultIOService(IOService *&ioServiceOut, const IOServiceCreationParams &params) noexcept {
+NETKNOT_API ExceptionPointer Win32IOService::compileAddress(peff::Alloc *allocator, const Address &address, char *&bufferOut, size_t &szBufferOut) {
+}
+
+NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService *&ioServiceOut, const IOServiceCreationParams &params) noexcept {
 	HANDLE iocpCompletionPort;
 
 	if ((iocpCompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0)) == INVALID_HANDLE_VALUE) {
@@ -40,8 +43,11 @@ ExceptionPointer netknot::createDefaultIOService(IOService *&ioServiceOut, const
 
 	std::unique_ptr<Win32IOService, peff::DeallocableDeleter<Win32IOService>> ioService(Win32IOService::alloc(params.allocator.get()));
 
-	if(!ioService)
+	if (!ioService)
 		return OutOfMemoryError::alloc();
+
+	for (size_t i = 0; i < params.nWorkerThreads; ++i) {
+	}
 
 	ioServiceOut = ioService.release();
 

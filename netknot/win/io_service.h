@@ -4,11 +4,16 @@
 #include "../io_service.h"
 #include <peff/base/deallocable.h>
 #include <peff/containers/dynarray.h>
+#include <peff/containers/map.h>
 #include <Windows.h>
 
 namespace netknot {
 	class Win32IOService : public IOService {
 	public:
+		struct IOCPOverlapped : public OVERLAPPED {
+
+		};
+
 		peff::RcObjectPtr<peff::Alloc> selfAllocator;
 		HANDLE iocpCompletionPort = INVALID_HANDLE_VALUE;
 
@@ -22,6 +27,9 @@ namespace netknot {
 		NETKNOT_API virtual void run() override;
 
 		NETKNOT_API virtual ExceptionPointer createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType) override;
+
+		NETKNOT_API virtual ExceptionPointer compileAddress(peff::Alloc *allocator, const Address &address, char *&bufferOut, size_t &szBufferOut) override;
+		NETKNOT_API virtual ExceptionPointer registerAddressCompiler(const peff::UUID &addressFamily, AddressCompiler addressCompiler) override;
 	};
 }
 

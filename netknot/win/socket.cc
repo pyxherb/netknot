@@ -99,6 +99,7 @@ NETKNOT_API ExceptionPointer Win32Socket::write(const char *buffer, size_t size,
 
 	return {};
 }
+
 NETKNOT_API ExceptionPointer Win32Socket::accept(Address &addressOut) {
 }
 

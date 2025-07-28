@@ -6,6 +6,7 @@
 
 namespace netknot {
 	class Win32Socket;
+	class Win32IOService;
 
 	class Win32ReadAsyncTask : public ReadAsyncTask {
 	public:

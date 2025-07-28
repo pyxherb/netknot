@@ -44,6 +44,12 @@ NETKNOT_API AcceptAsyncCallback::AcceptAsyncCallback() {
 NETKNOT_API AcceptAsyncCallback::~AcceptAsyncCallback() {
 }
 
+NETKNOT_API AddressCompiler::AddressCompiler() {
+}
+
+NETKNOT_API AddressCompiler::~AddressCompiler() {
+}
+
 NETKNOT_API Socket::Socket() {
 }
 
