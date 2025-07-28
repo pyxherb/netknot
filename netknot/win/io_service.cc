@@ -48,8 +48,26 @@ NETKNOT_API ExceptionPointer Win32IOService::compileAddress(peff::Alloc *allocat
 		sa.sin_family = AF_INET;
 		sa.sin_addr.s_addr = ((addr.a << 24) | (addr.b << 16) | (addr.c << 8) | (addr.d));
 		sa.sin_port = htons(addr.port);
+
+		std::unique_ptr<Win32CompiledAddress, peff::DeallocableDeleter<Win32CompiledAddress>>
+			compiledAddress(peff::allocAndConstruct<Win32CompiledAddress>(allocator, alignof(Win32CompiledAddress), allocator));
+
+		if (!compiledAddress)
+			return OutOfMemoryError::alloc();
+
+		if (!(compiledAddress->data = (char*)allocator->alloc(sizeof(sa), 1))) {
+			return OutOfMemoryError::alloc();
+		}
+
+		compiledAddress->size = sizeof(sa);
+
+		compiledAddressOut = compiledAddress.release();
+
+		return {};
 	} else if (address.addressFamily == ADDRFAM_IPV6) {
 	}
+
+	std::terminate();
 }
 
 NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService *&ioServiceOut, const IOServiceCreationParams &params) noexcept {

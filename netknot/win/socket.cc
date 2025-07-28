@@ -64,14 +64,23 @@ NETKNOT_API void Win32Socket::close() {
 	}
 }
 
-NETKNOT_API ExceptionPointer Win32Socket::bind(const Address& address) {
+NETKNOT_API ExceptionPointer Win32Socket::bind(const CompiledAddress *address) {
+	const Win32CompiledAddress *addr = (const Win32CompiledAddress *)address;
+
+	int result = ::bind(socket, (const sockaddr *)addr->data, addr->size);
+
+	if (result == SOCKET_ERROR) {
+		std::terminate();
+	}
+
+	return {};
 }
 
 NETKNOT_API ExceptionPointer Win32Socket::listen(size_t backlog) {
 
 }
 
-NETKNOT_API ExceptionPointer Win32Socket::connect(const Address& address) {
+NETKNOT_API ExceptionPointer Win32Socket::connect(const CompiledAddress *address) {
 
 }
 

@@ -134,9 +134,9 @@ namespace netknot {
 
 		virtual void close() = 0;
 
-		virtual ExceptionPointer bind(const Address &address) = 0;
+		virtual ExceptionPointer bind(const CompiledAddress *address) = 0;
 		virtual ExceptionPointer listen(size_t backlog) = 0;
-		virtual ExceptionPointer connect(const Address &address) = 0;
+		virtual ExceptionPointer connect(const CompiledAddress *address) = 0;
 
 		virtual ExceptionPointer read(char *buffer, size_t size, size_t &szReadOut) = 0;
 		virtual ExceptionPointer write(const char *buffer, size_t size, size_t &szWrittenOut) = 0;

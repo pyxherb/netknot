@@ -71,9 +71,9 @@ namespace netknot {
 
 		NETKNOT_API virtual void close() override;
 
-		NETKNOT_API virtual ExceptionPointer bind(const Address &address) override;
+		NETKNOT_API virtual ExceptionPointer bind(const CompiledAddress *address) override;
 		NETKNOT_API virtual ExceptionPointer listen(size_t backlog) override;
-		NETKNOT_API virtual ExceptionPointer connect(const Address &address) override;
+		NETKNOT_API virtual ExceptionPointer connect(const CompiledAddress *address) override;
 
 		NETKNOT_API virtual ExceptionPointer read(char *buffer, size_t size, size_t &szReadOut) override;
 		NETKNOT_API virtual ExceptionPointer write(const char *buffer, size_t size, size_t &szWrittenOut) override;
