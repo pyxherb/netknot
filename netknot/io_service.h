@@ -26,6 +26,7 @@ namespace netknot {
 		virtual ExceptionPointer createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType) = 0;
 
 		virtual ExceptionPointer compileAddress(peff::Alloc *allocator, const Address &address, CompiledAddress *&compiledAddressOut) = 0;
+		virtual ExceptionPointer decompileAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const CompiledAddress *address, Address *&addressOut) = 0;
 	};
 
 	ExceptionPointer createDefaultIOService(IOService *&ioServiceOut, const IOServiceCreationParams &params) noexcept;

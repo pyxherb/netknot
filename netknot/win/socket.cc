@@ -46,7 +46,7 @@ NETKNOT_API Address& Win32IPv4AcceptAsyncTask::getAcceptedAddress() {
 	return convertedAddress;
 }
 
-NETKNOT_API Win32Socket::Win32Socket(SOCKET socket) : socket(socket) {
+NETKNOT_API Win32Socket::Win32Socket(SOCKET socket, const peff::UUID &socketTypeId) : socket(socket) {
 }
 
 NETKNOT_API Win32Socket::~Win32Socket() {
@@ -77,11 +77,25 @@ NETKNOT_API ExceptionPointer Win32Socket::bind(const CompiledAddress *address) {
 }
 
 NETKNOT_API ExceptionPointer Win32Socket::listen(size_t backlog) {
+	int result = ::listen(socket, backlog);
 
+	if (result == SOCKET_ERROR) {
+		std::terminate();
+	}
+
+	return {};
 }
 
 NETKNOT_API ExceptionPointer Win32Socket::connect(const CompiledAddress *address) {
+	const Win32CompiledAddress *addr = (const Win32CompiledAddress *)address;
 
+	int result = ::connect(socket, (const sockaddr *)addr->data, addr->size);
+
+	if (result == SOCKET_ERROR) {
+		std::terminate();
+	}
+
+	return {};
 }
 
 NETKNOT_API ExceptionPointer Win32Socket::read(char *buffer, size_t size, size_t &szReadOut) {
