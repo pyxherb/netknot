@@ -29,6 +29,10 @@ namespace netknot {
 			assert(offset < buffer->size);
 			assert(offset + size < buffer->size);
 		}
+
+		NETKNOT_FORCEINLINE operator bool() {
+			return buffer;
+		}
 	};
 }
 

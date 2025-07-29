@@ -6,6 +6,7 @@
 #include <peff/base/deallocable.h>
 #include <peff/containers/dynarray.h>
 #include <peff/containers/map.h>
+#include <peff/advutils/buffer_alloc.h>
 #include <Windows.h>
 
 namespace netknot {
@@ -23,11 +24,38 @@ namespace netknot {
 
 	class Win32IOService : public IOService {
 	public:
+		NETKNOT_API static DWORD WINAPI _workerThreadProc(LPVOID lpThreadParameter);
+
+		struct ThreadLocalData {
+			HANDLE hThread = INVALID_HANDLE_VALUE;
+			size_t threadId;
+			peff::List<peff::RcObjectPtr<AsyncTask>> currentTasks, doneTasks;
+			bool terminate = false;
+
+			NETKNOT_FORCEINLINE ThreadLocalData(size_t threadId, peff::Alloc *allocator) : threadId(threadId), currentTasks(allocator), doneTasks(allocator) {
+			}
+			NETKNOT_API ~ThreadLocalData();
+		};
+
 		struct IOCPOverlapped : public OVERLAPPED {
 		};
 
 		peff::RcObjectPtr<peff::Alloc> selfAllocator;
 		HANDLE iocpCompletionPort = INVALID_HANDLE_VALUE;
+
+		peff::DynArray<ThreadLocalData> threadLocalData;
+		size_t nCurrentTasksOfMostFreeThread;
+
+		size_t szSortedThreadIndicesBuffer = 0, alignSortedThreadIndicesBuffer = 0;
+		char *sortedThreadIndicesBuffer = nullptr;
+		peff::BufferAlloc sortedThreadAlloc;
+
+		struct SortedThreadIndicesEntry {
+			peff::Set<size_t> threadIndices;
+		};
+
+		peff::Map<size_t, SortedThreadIndicesEntry> sortedThreadIndices;
+		CRITICAL_SECTION threadResortCriticalSection; 
 
 		NETKNOT_API Win32IOService(peff::Alloc *selfAllocator);
 		NETKNOT_API ~Win32IOService();
@@ -38,9 +66,14 @@ namespace netknot {
 
 		NETKNOT_API virtual void run() override;
 
+		NETKNOT_API virtual ExceptionPointer postAsyncTask(AsyncTask *task) override;
+
 		NETKNOT_API virtual ExceptionPointer createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType) override;
 
-		NETKNOT_API virtual ExceptionPointer compileAddress(peff::Alloc *allocator, const Address &address, CompiledAddress *&compiledAddressOut) override;
+		NETKNOT_API virtual ExceptionPointer compileAddress(peff::Alloc *allocator, const Address *address, CompiledAddress *&compiledAddressOut) override;
+		NETKNOT_API virtual ExceptionPointer decompileAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const CompiledAddress *address, Address &addressOut) override;
+
+		NETKNOT_API void sortThreadsByLoad();
 	};
 }
 

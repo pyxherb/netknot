@@ -64,6 +64,7 @@ namespace netknot {
 		peff::RcObjectPtr<peff::Alloc> selfAllocator;
 		SOCKET socket;
 		peff::UUID socketTypeId;
+		IOService *ioService;
 
 		NETKNOT_API Win32Socket(SOCKET socket, const peff::UUID &socketTypeId);
 		NETKNOT_API virtual ~Win32Socket();
@@ -78,7 +79,7 @@ namespace netknot {
 
 		NETKNOT_API virtual ExceptionPointer read(char *buffer, size_t size, size_t &szReadOut) override;
 		NETKNOT_API virtual ExceptionPointer write(const char *buffer, size_t size, size_t &szWrittenOut) override;
-		NETKNOT_API virtual ExceptionPointer accept(Address &addressOut) override;
+		NETKNOT_API virtual ExceptionPointer accept() override;
 
 		NETKNOT_API virtual ReadAsyncTask *readAsync(peff::Alloc *allocator, const RcBufferRef &buffer, ReadAsyncCallback *callback) override;
 		NETKNOT_API virtual WriteAsyncTask *writeAsync(peff::Alloc *allocator, const RcBufferRef &buffer, WriteAsyncCallback *callback) override;

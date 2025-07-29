@@ -42,7 +42,7 @@ NETKNOT_API Win32IPv4AcceptAsyncTask::Win32IPv4AcceptAsyncTask(peff::Alloc *allo
 NETKNOT_API Win32IPv4AcceptAsyncTask::~Win32IPv4AcceptAsyncTask() {
 }
 
-NETKNOT_API Address& Win32IPv4AcceptAsyncTask::getAcceptedAddress() {
+NETKNOT_API Address &Win32IPv4AcceptAsyncTask::getAcceptedAddress() {
 	return convertedAddress;
 }
 
@@ -123,12 +123,28 @@ NETKNOT_API ExceptionPointer Win32Socket::write(const char *buffer, size_t size,
 	return {};
 }
 
-NETKNOT_API ExceptionPointer Win32Socket::accept(Address &addressOut) {
+NETKNOT_API ExceptionPointer Win32Socket::accept() {
+	int addrLen = 0;
+	int result = ::accept(socket, NULL, &addrLen);
+
+	if (result == SOCKET_ERROR) {
+		// TODO: Handle the errors...
+		std::terminate();
+	}
+
+	return {};
 }
 
 NETKNOT_API ReadAsyncTask *Win32Socket::readAsync(peff::Alloc *allocator, const RcBufferRef &buffer, ReadAsyncCallback *callback) {
+	std::unique_ptr<Win32ReadAsyncTask, AsyncTaskDeleter> task(
+		peff::allocAndConstruct<Win32ReadAsyncTask>(allocator, alignof(Win32ReadAsyncTask), allocator, this, buffer));
+
+	if (!task)
+		return nullptr;
 }
+
 NETKNOT_API WriteAsyncTask *Win32Socket::writeAsync(peff::Alloc *allocator, const RcBufferRef &buffer, WriteAsyncCallback *callback) {
 }
+
 NETKNOT_API AcceptAsyncTask *Win32Socket::acceptAsync(peff::Alloc *allocator) {
 }
