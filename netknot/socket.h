@@ -42,17 +42,19 @@ namespace netknot {
 		Interrupted,
 	};
 
-	peff::UUID ASYNCTASK_READ = PEFF_UUID(1a3b0d2e, 4c68, 49a0, 8e2f, 3a6b4d0e1c2a),
-			   ASYNCTASK_WRITE = PEFF_UUID(e8a4b1c0, 3d62, 4a86, 8b39, 1c0e2f4d6a8e),
-			   ASYNCTASK_ACCEPT = PEFF_UUID(2b4e0f3a, 6d18, 4e20, 9a3b, 0c2d4e6f8a1c);
+	enum class AsyncTaskType : uint8_t {
+		Read = 0,
+		Write,
+		Accept
+	};
 
 	class AsyncTask {
 	private:
 		std::atomic_size_t _refCount = 0;
-		const peff::UUID _taskType;
+		AsyncTaskType _taskType;
 
 	public:
-		NETKNOT_API AsyncTask(const peff::UUID &taskType);
+		NETKNOT_API AsyncTask(AsyncTaskType taskType);
 		NETKNOT_API ~AsyncTask();
 
 		virtual void onRefZero() noexcept = 0;
@@ -72,6 +74,10 @@ namespace netknot {
 
 		virtual AsyncTaskStatus getStatus() = 0;
 		virtual ExceptionPointer &getException() = 0;
+
+		NETKNOT_FORCEINLINE AsyncTaskType getTaskType() const noexcept {
+			return _taskType;
+		}
 	};
 
 	struct AsyncTaskDeleter {

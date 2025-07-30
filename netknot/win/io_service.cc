@@ -26,8 +26,6 @@ NETKNOT_API DWORD WINAPI Win32IOService::_workerThreadProc(LPVOID lpThreadParame
 		GetQueuedCompletionStatus(tld->ioService->iocpCompletionPort, &szTransferred, &key, &ov, INFINITE);
 
 		IOCPOverlapped *iocpOverlapped = (IOCPOverlapped *)ov;
-
-
 	}
 }
 
@@ -43,7 +41,8 @@ NETKNOT_API Win32IOService::Win32IOService(peff::Alloc *selfAllocator)
 	  threadLocalData(selfAllocator),
 	  sortedThreadIndicesAlloc(nullptr, 0),
 	  sortedThreadSetAlloc(nullptr, 0),
-	  sortedThreadIndices(selfAllocator) {
+	  sortedThreadIndices(selfAllocator),
+	  asyncTaskHandlers(selfAllocator) {
 }
 
 NETKNOT_API Win32IOService::~Win32IOService() {
@@ -76,7 +75,7 @@ NETKNOT_API void Win32IOService::run() {
 	}
 }
 
-NETKNOT_API ExceptionPointer Win32IOService::postAsyncTask(AsyncTask *task) {
+NETKNOT_API ExceptionPointer Win32IOService::postAsyncTask(AsyncTask *task) noexcept {
 	EnterCriticalSection(&threadResortCriticalSection);
 
 	peff::ScopeGuard leaveCriticalSectionGuard([this]() {
@@ -92,7 +91,7 @@ NETKNOT_API ExceptionPointer Win32IOService::postAsyncTask(AsyncTask *task) {
 	size_t load = tld.currentTasks.size();
 	size_t newLoad = load + 1;
 
-	if (!tld.currentTasks.pushBack(task))
+	if (!tld.currentTasks.insert(task))
 		return OutOfMemoryError::alloc();
 
 	set.remove(+selectedThreadId);
@@ -102,10 +101,10 @@ NETKNOT_API ExceptionPointer Win32IOService::postAsyncTask(AsyncTask *task) {
 	return {};
 }
 
-NETKNOT_API ExceptionPointer Win32IOService::createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType) {
+NETKNOT_API ExceptionPointer Win32IOService::createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType) noexcept {
 }
 
-NETKNOT_API ExceptionPointer Win32IOService::compileAddress(peff::Alloc *allocator, const Address *address, CompiledAddress *&compiledAddressOut) {
+NETKNOT_API ExceptionPointer Win32IOService::compileAddress(peff::Alloc *allocator, const Address *address, CompiledAddress *&compiledAddressOut) noexcept {
 	if (address->addressFamily == ADDRFAM_IPV4) {
 		SOCKADDR_IN sa = { 0 };
 
@@ -138,7 +137,7 @@ NETKNOT_API ExceptionPointer Win32IOService::compileAddress(peff::Alloc *allocat
 	std::terminate();
 }
 
-ExceptionPointer Win32IOService::decompileAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const CompiledAddress *address, Address &addressOut) {
+ExceptionPointer Win32IOService::decompileAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const CompiledAddress *address, Address &addressOut) noexcept {
 	if (addressFamily == ADDRFAM_IPV4) {
 		sockaddr_in *sa = (sockaddr_in *)((Win32CompiledAddress *)address)->data;
 

@@ -30,7 +30,7 @@ namespace netknot {
 			Win32IOService *ioService;
 			HANDLE hThread = INVALID_HANDLE_VALUE;
 			size_t threadId;
-			peff::List<peff::RcObjectPtr<AsyncTask>> currentTasks, doneTasks;
+			peff::Set<peff::RcObjectPtr<AsyncTask>> currentTasks, doneTasks;
 			bool terminate = false;
 
 			NETKNOT_FORCEINLINE ThreadLocalData(Win32IOService *ioService, size_t threadId, peff::Alloc *allocator) : ioService(ioService), threadId(threadId), currentTasks(allocator), doneTasks(allocator) {
@@ -39,6 +39,7 @@ namespace netknot {
 		};
 
 		struct IOCPOverlapped : public OVERLAPPED {
+			AsyncTask *asyncTask;
 		};
 
 		peff::RcObjectPtr<peff::Alloc> selfAllocator;
@@ -56,7 +57,9 @@ namespace netknot {
 		peff::BufferAlloc sortedThreadSetAlloc;
 
 		peff::Map<size_t, peff::Set<size_t>> sortedThreadIndices;
-		CRITICAL_SECTION threadResortCriticalSection; 
+		CRITICAL_SECTION threadResortCriticalSection;
+
+		peff::Map<peff::UUID, AsyncTaskHandler> asyncTaskHandlers;
 
 		NETKNOT_API Win32IOService(peff::Alloc *selfAllocator);
 		NETKNOT_API ~Win32IOService();
