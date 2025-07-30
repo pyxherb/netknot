@@ -16,6 +16,19 @@ NETKNOT_API void Win32CompiledAddress::dealloc() noexcept {
 }
 
 NETKNOT_API DWORD WINAPI Win32IOService::_workerThreadProc(LPVOID lpThreadParameter) {
+	ThreadLocalData *tld = (ThreadLocalData *)lpThreadParameter;
+
+	while (true) {
+		DWORD szTransferred;
+		ULONG_PTR key;
+		LPOVERLAPPED ov;
+
+		GetQueuedCompletionStatus(tld->ioService->iocpCompletionPort, &szTransferred, &key, &ov, INFINITE);
+
+		IOCPOverlapped *iocpOverlapped = (IOCPOverlapped *)ov;
+
+
+	}
 }
 
 NETKNOT_API Win32IOService::ThreadLocalData::~ThreadLocalData() {
@@ -25,12 +38,20 @@ NETKNOT_API Win32IOService::ThreadLocalData::~ThreadLocalData() {
 	}
 }
 
-NETKNOT_API Win32IOService::Win32IOService(peff::Alloc *selfAllocator) : selfAllocator(selfAllocator), threadLocalData(selfAllocator), sortedThreadAlloc(nullptr, 0), sortedThreadIndices(selfAllocator) {
+NETKNOT_API Win32IOService::Win32IOService(peff::Alloc *selfAllocator)
+	: selfAllocator(selfAllocator),
+	  threadLocalData(selfAllocator),
+	  sortedThreadIndicesAlloc(nullptr, 0),
+	  sortedThreadSetAlloc(nullptr, 0),
+	  sortedThreadIndices(selfAllocator) {
 }
 
 NETKNOT_API Win32IOService::~Win32IOService() {
 	if (sortedThreadIndicesBuffer) {
 		selfAllocator->release(sortedThreadIndicesBuffer, szSortedThreadIndicesBuffer, alignSortedThreadIndicesBuffer);
+	}
+	if (sortedThreadSetBuffer) {
+		selfAllocator->release(sortedThreadSetBuffer, szSortedThreadSetBuffer, alignSortedThreadSetBuffer);
 	}
 }
 
@@ -50,7 +71,7 @@ NETKNOT_API void Win32IOService::dealloc() noexcept {
 NETKNOT_API void Win32IOService::run() {
 	sortThreadsByLoad();
 
-	for (auto& i : threadLocalData) {
+	for (auto &i : threadLocalData) {
 		ResumeThread(i.hThread);
 	}
 }
@@ -61,6 +82,24 @@ NETKNOT_API ExceptionPointer Win32IOService::postAsyncTask(AsyncTask *task) {
 	peff::ScopeGuard leaveCriticalSectionGuard([this]() {
 		LeaveCriticalSection(&threadResortCriticalSection);
 	});
+
+	auto &set = sortedThreadIndices.begin().value();
+
+	size_t selectedThreadId = *set.begin();
+
+	ThreadLocalData &tld = threadLocalData.at(selectedThreadId);
+
+	size_t load = tld.currentTasks.size();
+	size_t newLoad = load + 1;
+
+	if (!tld.currentTasks.pushBack(task))
+		return OutOfMemoryError::alloc();
+
+	set.remove(+selectedThreadId);
+
+	addIntoOrInsertNewSortedThreadGroup(newLoad, selectedThreadId);
+
+	return {};
 }
 
 NETKNOT_API ExceptionPointer Win32IOService::createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType) {
@@ -124,7 +163,7 @@ NETKNOT_API void Win32IOService::addIntoOrInsertNewSortedThreadGroup(size_t load
 		if (!it.value().insert(+index))
 			std::terminate();
 	} else {
-		peff::Set<size_t> groupSet(&sortedThreadAlloc);
+		peff::Set<size_t> groupSet(&sortedThreadIndicesAlloc);
 
 		if (!groupSet.insert(+index))
 			std::terminate();
@@ -165,7 +204,7 @@ NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService *&ioServi
 	}
 
 	for (size_t i = 0; i < params.nWorkerThreads; ++i) {
-		peff::constructAt(&ioService->threadLocalData.at(i), i, params.allocator.get());
+		peff::constructAt(&ioService->threadLocalData.at(i), ioService.get(), i, params.allocator.get());
 	}
 
 	for (size_t i = 0; i < params.nWorkerThreads; ++i) {
@@ -180,20 +219,43 @@ NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService *&ioServi
 		tld.hThread = hThread;
 	}
 
-	const size_t szBuffer = (peff::BufferAlloc::calcAllocSize(sizeof(peff::Map<size_t, size_t>::NodeType), alignof(std::max_align_t))) *
-							params.nWorkerThreads,
-				 alignment = alignof(std::max_align_t);
+	{
+		const size_t szBuffer = (peff::BufferAlloc::calcAllocSize(
+									sizeof(peff::Map<size_t, peff::Set<size_t>>::NodeType),
+									alignof(std::max_align_t))) *
+								params.nWorkerThreads,
+					 alignment = alignof(std::max_align_t);
 
-	if (!(ioService->sortedThreadIndicesBuffer = (char *)params.allocator->alloc(
-			  szBuffer,
-			  alignment))) {
-		return OutOfMemoryError::alloc();
+		if (!(ioService->sortedThreadIndicesBuffer = (char *)params.allocator->alloc(
+				  szBuffer,
+				  alignment))) {
+			return OutOfMemoryError::alloc();
+		}
+
+		ioService->sortedThreadIndicesAlloc = peff::BufferAlloc(ioService->sortedThreadIndicesBuffer, szBuffer);
+
+		ioService->szSortedThreadIndicesBuffer = szBuffer;
+		ioService->alignSortedThreadIndicesBuffer = alignment;
 	}
 
-	ioService->sortedThreadAlloc = peff::BufferAlloc(ioService->sortedThreadIndicesBuffer, szBuffer);
+	{
+		const size_t szBuffer = (peff::BufferAlloc::calcAllocSize(
+									sizeof(peff::Set<size_t>::NodeType),
+									alignof(std::max_align_t))) *
+								params.nWorkerThreads,
+					 alignment = alignof(std::max_align_t);
 
-	ioService->szSortedThreadIndicesBuffer = szBuffer;
-	ioService->alignSortedThreadIndicesBuffer = alignment;
+		if (!(ioService->sortedThreadSetBuffer = (char *)params.allocator->alloc(
+				  szBuffer,
+				  alignment))) {
+			return OutOfMemoryError::alloc();
+		}
+
+		ioService->sortedThreadSetAlloc = peff::BufferAlloc(ioService->sortedThreadSetBuffer, szBuffer);
+
+		ioService->szSortedThreadSetBuffer = szBuffer;
+		ioService->alignSortedThreadSetBuffer = alignment;
+	}
 
 	ioServiceOut = ioService.release();
 

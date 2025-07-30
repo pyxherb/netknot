@@ -27,12 +27,13 @@ namespace netknot {
 		NETKNOT_API static DWORD WINAPI _workerThreadProc(LPVOID lpThreadParameter);
 
 		struct ThreadLocalData {
+			Win32IOService *ioService;
 			HANDLE hThread = INVALID_HANDLE_VALUE;
 			size_t threadId;
 			peff::List<peff::RcObjectPtr<AsyncTask>> currentTasks, doneTasks;
 			bool terminate = false;
 
-			NETKNOT_FORCEINLINE ThreadLocalData(size_t threadId, peff::Alloc *allocator) : threadId(threadId), currentTasks(allocator), doneTasks(allocator) {
+			NETKNOT_FORCEINLINE ThreadLocalData(Win32IOService *ioService, size_t threadId, peff::Alloc *allocator) : ioService(ioService), threadId(threadId), currentTasks(allocator), doneTasks(allocator) {
 			}
 			NETKNOT_API ~ThreadLocalData();
 		};
@@ -48,7 +49,11 @@ namespace netknot {
 
 		size_t szSortedThreadIndicesBuffer = 0, alignSortedThreadIndicesBuffer = 0;
 		char *sortedThreadIndicesBuffer = nullptr;
-		peff::BufferAlloc sortedThreadAlloc;
+		peff::BufferAlloc sortedThreadIndicesAlloc;
+
+		size_t szSortedThreadSetBuffer = 0, alignSortedThreadSetBuffer = 0;
+		char *sortedThreadSetBuffer = nullptr;
+		peff::BufferAlloc sortedThreadSetAlloc;
 
 		peff::Map<size_t, peff::Set<size_t>> sortedThreadIndices;
 		CRITICAL_SECTION threadResortCriticalSection; 

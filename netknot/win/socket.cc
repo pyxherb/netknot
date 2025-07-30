@@ -123,11 +123,11 @@ NETKNOT_API ExceptionPointer Win32Socket::write(const char *buffer, size_t size,
 	return {};
 }
 
-NETKNOT_API ExceptionPointer Win32Socket::accept() {
+NETKNOT_API ExceptionPointer Win32Socket::accept(peff::Alloc *allocator, Socket *&socketOut) {
 	int addrLen = 0;
-	int result = ::accept(socket, NULL, &addrLen);
+	SOCKET newSocket = ::accept(socket, NULL, &addrLen);
 
-	if (result == SOCKET_ERROR) {
+	if (newSocket == INVALID_SOCKET) {
 		// TODO: Handle the errors...
 		std::terminate();
 	}
