@@ -119,14 +119,28 @@ ExceptionPointer Win32IOService::decompileAddress(peff::Alloc *allocator, const 
 	std::terminate();
 }
 
+NETKNOT_API void Win32IOService::addIntoOrInsertNewSortedThreadGroup(size_t load, size_t index) {
+	if (auto it = sortedThreadIndices.find(load); it != sortedThreadIndices.end()) {
+		if (!it.value().insert(+index))
+			std::terminate();
+	} else {
+		peff::Set<size_t> groupSet(&sortedThreadAlloc);
+
+		if (!groupSet.insert(+index))
+			std::terminate();
+
+		if (!sortedThreadIndices.insert(+load, std::move(groupSet)))
+			std::terminate();
+	}
+}
+
 NETKNOT_API void Win32IOService::sortThreadsByLoad() {
 	sortedThreadIndices.clear();
 
 	for (size_t i = 0; i < threadLocalData.size(); ++i) {
 		auto &tld = threadLocalData.at(i);
 
-		if (!sortedThreadIndices.insert(tld.currentTasks.size(), +i))
-			std::terminate();
+		addIntoOrInsertNewSortedThreadGroup(tld.currentTasks.size(), i);
 	}
 }
 

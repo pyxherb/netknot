@@ -64,7 +64,7 @@ namespace netknot {
 		peff::RcObjectPtr<peff::Alloc> selfAllocator;
 		SOCKET socket;
 		peff::UUID socketTypeId;
-		IOService *ioService;
+		Win32IOService *ioService;
 
 		NETKNOT_API Win32Socket(SOCKET socket, const peff::UUID &socketTypeId);
 		NETKNOT_API virtual ~Win32Socket();

@@ -77,7 +77,7 @@ NETKNOT_API ExceptionPointer Win32Socket::bind(const CompiledAddress *address) {
 }
 
 NETKNOT_API ExceptionPointer Win32Socket::listen(size_t backlog) {
-	int result = ::listen(socket, backlog);
+	int result = ::listen(socket, (int)backlog);
 
 	if (result == SOCKET_ERROR) {
 		std::terminate();

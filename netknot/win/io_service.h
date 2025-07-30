@@ -50,11 +50,7 @@ namespace netknot {
 		char *sortedThreadIndicesBuffer = nullptr;
 		peff::BufferAlloc sortedThreadAlloc;
 
-		struct SortedThreadIndicesEntry {
-			peff::Set<size_t> threadIndices;
-		};
-
-		peff::Map<size_t, SortedThreadIndicesEntry> sortedThreadIndices;
+		peff::Map<size_t, peff::Set<size_t>> sortedThreadIndices;
 		CRITICAL_SECTION threadResortCriticalSection; 
 
 		NETKNOT_API Win32IOService(peff::Alloc *selfAllocator);
@@ -73,6 +69,7 @@ namespace netknot {
 		NETKNOT_API virtual ExceptionPointer compileAddress(peff::Alloc *allocator, const Address *address, CompiledAddress *&compiledAddressOut) override;
 		NETKNOT_API virtual ExceptionPointer decompileAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const CompiledAddress *address, Address &addressOut) override;
 
+		NETKNOT_API void addIntoOrInsertNewSortedThreadGroup(size_t load, size_t index);
 		NETKNOT_API void sortThreadsByLoad();
 	};
 }
