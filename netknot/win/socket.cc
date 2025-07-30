@@ -132,6 +132,14 @@ NETKNOT_API ExceptionPointer Win32Socket::accept(peff::Alloc *allocator, Socket 
 		std::terminate();
 	}
 
+	std::unique_ptr<Win32Socket, peff::DeallocableDeleter<Win32Socket>> p(
+		peff::allocAndConstruct<Win32Socket>(allocator, alignof(Win32Socket), newSocket, socketTypeId));
+
+	if (!p)
+		return OutOfMemoryError::alloc();
+
+	socketOut = p.release();
+
 	return {};
 }
 
