@@ -41,8 +41,7 @@ NETKNOT_API Win32IOService::Win32IOService(peff::Alloc *selfAllocator)
 	  threadLocalData(selfAllocator),
 	  sortedThreadIndicesAlloc(nullptr, 0),
 	  sortedThreadSetAlloc(nullptr, 0),
-	  sortedThreadIndices(selfAllocator),
-	  asyncTaskHandlers(selfAllocator) {
+	  sortedThreadIndices(selfAllocator) {
 }
 
 NETKNOT_API Win32IOService::~Win32IOService() {

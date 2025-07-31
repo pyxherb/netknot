@@ -59,8 +59,6 @@ namespace netknot {
 		peff::Map<size_t, peff::Set<size_t>> sortedThreadIndices;
 		CRITICAL_SECTION threadResortCriticalSection;
 
-		peff::Map<peff::UUID, AsyncTaskHandler> asyncTaskHandlers;
-
 		NETKNOT_API Win32IOService(peff::Alloc *selfAllocator);
 		NETKNOT_API ~Win32IOService();
 
@@ -70,12 +68,12 @@ namespace netknot {
 
 		NETKNOT_API virtual void run() override;
 
-		NETKNOT_API virtual ExceptionPointer postAsyncTask(AsyncTask *task) override;
+		NETKNOT_API virtual ExceptionPointer postAsyncTask(AsyncTask *task) noexcept override;
 
-		NETKNOT_API virtual ExceptionPointer createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType) override;
+		NETKNOT_API virtual ExceptionPointer createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType) noexcept override;
 
-		NETKNOT_API virtual ExceptionPointer compileAddress(peff::Alloc *allocator, const Address *address, CompiledAddress *&compiledAddressOut) override;
-		NETKNOT_API virtual ExceptionPointer decompileAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const CompiledAddress *address, Address &addressOut) override;
+		NETKNOT_API virtual ExceptionPointer compileAddress(peff::Alloc *allocator, const Address *address, CompiledAddress *&compiledAddressOut) noexcept override;
+		NETKNOT_API virtual ExceptionPointer decompileAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const CompiledAddress *address, Address &addressOut) noexcept override;
 
 		NETKNOT_API void addIntoOrInsertNewSortedThreadGroup(size_t load, size_t index);
 		NETKNOT_API void sortThreadsByLoad();
