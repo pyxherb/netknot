@@ -19,6 +19,11 @@ namespace netknot {
 		NETKNOT_API Win32ReadAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const RcBufferRef &bufferRef);
 		NETKNOT_API virtual ~Win32ReadAsyncTask();
 
+		NETKNOT_API virtual void onRefZero() noexcept override;
+
+		NETKNOT_API virtual AsyncTaskStatus getStatus() override;
+		NETKNOT_API virtual ExceptionPointer &getException() override;
+
 		NETKNOT_API virtual size_t getCurrentReadSize() override;
 		NETKNOT_API virtual size_t getExpectedReadSize() override;
 	};
@@ -34,6 +39,11 @@ namespace netknot {
 		NETKNOT_API Win32WriteAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const RcBufferRef &bufferRef);
 		NETKNOT_API virtual ~Win32WriteAsyncTask();
 
+		NETKNOT_API virtual void onRefZero() noexcept override;
+
+		NETKNOT_API virtual AsyncTaskStatus getStatus() override;
+		NETKNOT_API virtual ExceptionPointer &getException() override;
+
 		NETKNOT_API virtual size_t getCurrentWrittenSize() override;
 		NETKNOT_API virtual size_t getExpectedWrittenSize() override;
 	};
@@ -47,16 +57,11 @@ namespace netknot {
 
 		NETKNOT_API Win32AcceptAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const peff::UUID &addressFamily);
 		NETKNOT_API virtual ~Win32AcceptAsyncTask();
-	};
 
-	class Win32IPv4AcceptAsyncTask : public Win32AcceptAsyncTask {
-	public:
-		IPv4Address convertedAddress;
+		NETKNOT_API virtual void onRefZero() noexcept override;
 
-		NETKNOT_API Win32IPv4AcceptAsyncTask(peff::Alloc *allocator, Win32Socket *socket);
-		NETKNOT_API virtual ~Win32IPv4AcceptAsyncTask();
-
-		NETKNOT_API virtual Address &getAcceptedAddress() override;
+		NETKNOT_API virtual AsyncTaskStatus getStatus() override;
+		NETKNOT_API virtual ExceptionPointer &getException() override;
 	};
 
 	class Win32Socket : public Socket {

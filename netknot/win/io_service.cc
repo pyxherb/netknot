@@ -77,7 +77,7 @@ NETKNOT_API void Win32IOService::run() {
 NETKNOT_API ExceptionPointer Win32IOService::postAsyncTask(AsyncTask *task) noexcept {
 	EnterCriticalSection(&threadResortCriticalSection);
 
-	peff::ScopeGuard leaveCriticalSectionGuard([this]() {
+	peff::ScopeGuard leaveCriticalSectionGuard([this]() noexcept {
 		LeaveCriticalSection(&threadResortCriticalSection);
 	});
 

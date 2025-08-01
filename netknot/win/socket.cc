@@ -36,16 +36,6 @@ NETKNOT_API Win32AcceptAsyncTask::Win32AcceptAsyncTask(peff::Alloc *allocator, W
 NETKNOT_API Win32AcceptAsyncTask::~Win32AcceptAsyncTask() {
 }
 
-NETKNOT_API Win32IPv4AcceptAsyncTask::Win32IPv4AcceptAsyncTask(peff::Alloc *allocator, Win32Socket *socket) : Win32AcceptAsyncTask(allocator, socket, ADDRFAM_IPV4) {
-}
-
-NETKNOT_API Win32IPv4AcceptAsyncTask::~Win32IPv4AcceptAsyncTask() {
-}
-
-NETKNOT_API Address &Win32IPv4AcceptAsyncTask::getAcceptedAddress() {
-	return convertedAddress;
-}
-
 NETKNOT_API Win32Socket::Win32Socket(SOCKET socket, const peff::UUID &socketTypeId) : socket(socket) {
 }
 
