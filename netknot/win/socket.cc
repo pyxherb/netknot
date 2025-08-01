@@ -8,6 +8,18 @@ NETKNOT_API Win32ReadAsyncTask::Win32ReadAsyncTask(peff::Alloc *allocator, Win32
 NETKNOT_API Win32ReadAsyncTask::~Win32ReadAsyncTask() {
 }
 
+NETKNOT_API void Win32ReadAsyncTask::onRefZero() noexcept {
+	peff::destroyAndRelease<Win32ReadAsyncTask>(selfAllocator.get(), this, alignof(Win32ReadAsyncTask));
+}
+
+NETKNOT_API AsyncTaskStatus Win32ReadAsyncTask::getStatus() {
+	return status;
+}
+
+NETKNOT_API ExceptionPointer &Win32ReadAsyncTask::getException() {
+	return exceptPtr;
+}
+
 NETKNOT_API size_t Win32ReadAsyncTask::getCurrentReadSize() {
 	return szRead;
 }
@@ -22,6 +34,18 @@ NETKNOT_API Win32WriteAsyncTask::Win32WriteAsyncTask(peff::Alloc *allocator, Win
 NETKNOT_API Win32WriteAsyncTask::~Win32WriteAsyncTask() {
 }
 
+NETKNOT_API void Win32WriteAsyncTask::onRefZero() noexcept {
+	peff::destroyAndRelease<Win32WriteAsyncTask>(selfAllocator.get(), this, alignof(Win32WriteAsyncTask));
+}
+
+NETKNOT_API AsyncTaskStatus Win32WriteAsyncTask::getStatus() {
+	return status;
+}
+
+NETKNOT_API ExceptionPointer &Win32WriteAsyncTask::getException() {
+	return exceptPtr;
+}
+
 NETKNOT_API size_t Win32WriteAsyncTask::getCurrentWrittenSize() {
 	return szWritten;
 }
@@ -34,6 +58,18 @@ NETKNOT_API Win32AcceptAsyncTask::Win32AcceptAsyncTask(peff::Alloc *allocator, W
 }
 
 NETKNOT_API Win32AcceptAsyncTask::~Win32AcceptAsyncTask() {
+}
+
+NETKNOT_API void Win32AcceptAsyncTask::onRefZero() noexcept {
+	peff::destroyAndRelease<Win32AcceptAsyncTask>(selfAllocator.get(), this, alignof(Win32AcceptAsyncTask));
+}
+
+NETKNOT_API AsyncTaskStatus Win32AcceptAsyncTask::getStatus() {
+	return status;
+}
+
+NETKNOT_API ExceptionPointer &Win32AcceptAsyncTask::getException() {
+	return exceptPtr;
 }
 
 NETKNOT_API Win32Socket::Win32Socket(SOCKET socket, const peff::UUID &socketTypeId) : socket(socket) {

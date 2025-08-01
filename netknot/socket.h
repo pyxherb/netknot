@@ -108,8 +108,6 @@ namespace netknot {
 	public:
 		NETKNOT_API AcceptAsyncTask();
 		NETKNOT_API virtual ~AcceptAsyncTask();
-
-		virtual Address &getAcceptedAddress() = 0;
 	};
 
 	class ReadAsyncCallback {

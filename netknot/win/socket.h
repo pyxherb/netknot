@@ -15,6 +15,7 @@ namespace netknot {
 		Win32Socket *socket;
 		RcBufferRef bufferRef;
 		size_t szRead = 0;
+		ExceptionPointer exceptPtr;
 
 		NETKNOT_API Win32ReadAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const RcBufferRef &bufferRef);
 		NETKNOT_API virtual ~Win32ReadAsyncTask();
@@ -35,6 +36,7 @@ namespace netknot {
 		Win32Socket *socket;
 		RcBufferRef bufferRef;
 		size_t szWritten = 0;
+		ExceptionPointer exceptPtr;
 
 		NETKNOT_API Win32WriteAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const RcBufferRef &bufferRef);
 		NETKNOT_API virtual ~Win32WriteAsyncTask();
@@ -54,6 +56,7 @@ namespace netknot {
 		AsyncTaskStatus status = AsyncTaskStatus::Ready;
 		Win32Socket *socket;
 		peff::UUID addressFamily;
+		ExceptionPointer exceptPtr;
 
 		NETKNOT_API Win32AcceptAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const peff::UUID &addressFamily);
 		NETKNOT_API virtual ~Win32AcceptAsyncTask();
