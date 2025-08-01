@@ -33,6 +33,7 @@ namespace netknot {
 			peff::Set<peff::RcObjectPtr<AsyncTask>> currentTasks, doneTasks;
 			bool terminate = false;
 
+			NETKNOT_FORCEINLINE ThreadLocalData(ThreadLocalData &&) = default;
 			NETKNOT_FORCEINLINE ThreadLocalData(Win32IOService *ioService, size_t threadId, peff::Alloc *allocator) : ioService(ioService), threadId(threadId), currentTasks(allocator), doneTasks(allocator) {
 			}
 			NETKNOT_API ~ThreadLocalData();

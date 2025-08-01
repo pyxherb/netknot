@@ -133,16 +133,44 @@ NETKNOT_API ExceptionPointer Win32Socket::accept(peff::Alloc *allocator, Socket 
 	return {};
 }
 
-NETKNOT_API ReadAsyncTask *Win32Socket::readAsync(peff::Alloc *allocator, const RcBufferRef &buffer, ReadAsyncCallback *callback) {
+NETKNOT_API ExceptionPointer Win32Socket::readAsync(peff::Alloc *allocator, const RcBufferRef &buffer, ReadAsyncCallback *callback, ReadAsyncTask *&asyncTaskOut) {
 	std::unique_ptr<Win32ReadAsyncTask, AsyncTaskDeleter> task(
 		peff::allocAndConstruct<Win32ReadAsyncTask>(allocator, alignof(Win32ReadAsyncTask), allocator, this, buffer));
 
 	if (!task)
-		return nullptr;
+		return OutOfMemoryError::alloc();
+
+	NETKNOT_RETURN_IF_EXCEPT(ioService->postAsyncTask(task.get()));
+
+	asyncTaskOut = task.release();
+
+	return {};
 }
 
-NETKNOT_API WriteAsyncTask *Win32Socket::writeAsync(peff::Alloc *allocator, const RcBufferRef &buffer, WriteAsyncCallback *callback) {
+NETKNOT_API ExceptionPointer Win32Socket::writeAsync(peff::Alloc *allocator, const RcBufferRef &buffer, WriteAsyncCallback *callback, WriteAsyncTask *&asyncTaskOut) {
+	std::unique_ptr<Win32WriteAsyncTask, AsyncTaskDeleter> task(
+		peff::allocAndConstruct<Win32WriteAsyncTask>(allocator, alignof(Win32WriteAsyncTask), allocator, this, buffer));
+
+	if (!task)
+		return OutOfMemoryError::alloc();
+
+	NETKNOT_RETURN_IF_EXCEPT(ioService->postAsyncTask(task.get()));
+
+	asyncTaskOut = task.release();
+
+	return {};
 }
 
-NETKNOT_API AcceptAsyncTask *Win32Socket::acceptAsync(peff::Alloc *allocator) {
+NETKNOT_API ExceptionPointer Win32Socket::acceptAsync(peff::Alloc *allocator, AcceptAsyncTask *&asyncTaskOut) {
+	std::unique_ptr<Win32AcceptAsyncTask, AsyncTaskDeleter> task(
+		peff::allocAndConstruct<Win32AcceptAsyncTask>(allocator, alignof(Win32AcceptAsyncTask), allocator, this));
+
+	if (!task)
+		return OutOfMemoryError::alloc();
+
+	NETKNOT_RETURN_IF_EXCEPT(ioService->postAsyncTask(task.get()));
+
+	asyncTaskOut = task.release();
+
+	return {};
 }

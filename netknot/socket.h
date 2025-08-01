@@ -159,9 +159,9 @@ namespace netknot {
 		virtual ExceptionPointer write(const char *buffer, size_t size, size_t &szWrittenOut) = 0;
 		virtual ExceptionPointer accept(peff::Alloc *allocator, Socket *&socketOut) = 0;
 
-		virtual ReadAsyncTask *readAsync(peff::Alloc *allocator, const RcBufferRef &buffer, ReadAsyncCallback *callback) = 0;
-		virtual WriteAsyncTask *writeAsync(peff::Alloc *allocator, const RcBufferRef &buffer, WriteAsyncCallback *callback) = 0;
-		virtual AcceptAsyncTask *acceptAsync(peff::Alloc *allocator) = 0;
+		virtual ExceptionPointer readAsync(peff::Alloc *allocator, const RcBufferRef &buffer, ReadAsyncCallback *callback, ReadAsyncTask *&asyncTaskOut) = 0;
+		virtual ExceptionPointer writeAsync(peff::Alloc *allocator, const RcBufferRef &buffer, WriteAsyncCallback *callback, WriteAsyncTask *&asyncTaskOut) = 0;
+		virtual ExceptionPointer acceptAsync(peff::Alloc *allocator, AcceptAsyncTask *&asyncTaskOut) = 0;
 	};
 }
 
