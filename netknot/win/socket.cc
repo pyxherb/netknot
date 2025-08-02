@@ -206,6 +206,21 @@ NETKNOT_API ExceptionPointer Win32Socket::acceptAsync(peff::Alloc *allocator, Ac
 	if (!task)
 		return OutOfMemoryError::alloc();
 
+	std::unique_ptr<Win32Socket, peff::DeallocableDeleter<Win32Socket>> newSocket;
+	{
+		Socket *s;
+
+		NETKNOT_RETURN_IF_EXCEPT(ioService->createSocket(allocator, addressFamily, socketTypeId, s));
+
+		newSocket = std::unique_ptr<Win32Socket, peff::DeallocableDeleter<Win32Socket>>((Win32Socket *)s);
+	}
+
+	HANDLE hPort = CreateIoCompletionPort(
+		(HANDLE)newSocket->socket,
+		ioService->iocpCompletionPort,
+		NULL,
+		0);
+
 	NETKNOT_RETURN_IF_EXCEPT(ioService->postAsyncTask(task.get()));
 
 	asyncTaskOut = task.release();
