@@ -129,6 +129,10 @@ NETKNOT_API ExceptionPointer Win32IOService::createSocket(peff::Alloc *allocator
 	if (s == INVALID_SOCKET) {
 		std::terminate();
 	}
+
+	socketOut = p.release();
+
+	return {};
 }
 
 NETKNOT_API ExceptionPointer Win32IOService::compileAddress(peff::Alloc *allocator, const Address *address, CompiledAddress *&compiledAddressOut) noexcept {
