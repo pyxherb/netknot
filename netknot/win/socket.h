@@ -75,7 +75,7 @@ namespace netknot {
 		Win32IOService *ioService;
 		peff::UUID addressFamily;
 
-		NETKNOT_API Win32Socket(const peff::UUID &addressFamily, const peff::UUID &socketTypeId);
+		NETKNOT_API Win32Socket(Win32IOService *ioService, const peff::UUID &addressFamily, const peff::UUID &socketTypeId);
 		NETKNOT_API virtual ~Win32Socket();
 
 		NETKNOT_API virtual void dealloc() noexcept override;

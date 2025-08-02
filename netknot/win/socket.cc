@@ -72,7 +72,7 @@ NETKNOT_API ExceptionPointer &Win32AcceptAsyncTask::getException() {
 	return exceptPtr;
 }
 
-NETKNOT_API Win32Socket::Win32Socket(const peff::UUID &addressFamily, const peff::UUID &socketTypeId) : socket(socket), addressFamily(addressFamily), socketTypeId(socketTypeId) {
+NETKNOT_API Win32Socket::Win32Socket(Win32IOService *ioService, const peff::UUID &addressFamily, const peff::UUID &socketTypeId) : ioService(ioService), socket(socket), addressFamily(addressFamily), socketTypeId(socketTypeId) {
 }
 
 NETKNOT_API Win32Socket::~Win32Socket() {
@@ -159,10 +159,12 @@ NETKNOT_API ExceptionPointer Win32Socket::accept(peff::Alloc *allocator, Socket 
 	}
 
 	std::unique_ptr<Win32Socket, peff::DeallocableDeleter<Win32Socket>> p(
-		peff::allocAndConstruct<Win32Socket>(allocator, alignof(Win32Socket), newSocket, addressFamily, socketTypeId));
+		peff::allocAndConstruct<Win32Socket>(allocator, alignof(Win32Socket), ioService, addressFamily, socketTypeId));
 
 	if (!p)
 		return OutOfMemoryError::alloc();
+
+	p->socket = newSocket;
 
 	socketOut = p.release();
 
