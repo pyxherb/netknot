@@ -1,8 +1,10 @@
 file(GLOB HEADERS *.h *.hh)
 file(GLOB SRC *.c *.cc)
-target_sources(netknot PRIVATE ${HEADERS} ${SRC})
-if(SLAKE_BUILD_SHARED)
-    target_sources(netknotd PRIVATE ${HEADERS} ${SRC})
+target_sources(netknot_static PRIVATE ${HEADERS} ${SRC})
+target_link_libraries(netknot_static PRIVATE peff_advutils_static WS2_32)
+if(NETKNOT_BUILD_SHARED)
+    target_sources(netknot PRIVATE ${HEADERS} ${SRC})
+    target_link_libraries(netknot PRIVATE peff_advutils_static WS2_32)
 endif()
 
 install(FILES ${HEADERS} DESTINATION ${CMAKE_INSTALL_PREFIX}/include/netknot/win)
