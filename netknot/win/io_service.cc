@@ -100,7 +100,7 @@ NETKNOT_API ExceptionPointer Win32IOService::postAsyncTask(AsyncTask *task) noex
 	return {};
 }
 
-NETKNOT_API ExceptionPointer Win32IOService::createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType) noexcept {
+NETKNOT_API ExceptionPointer Win32IOService::createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType, Socket *&socketOut) noexcept {
 	std::unique_ptr<Win32Socket, peff::DeallocableDeleter<Win32Socket>> p(
 		peff::allocAndConstruct<Win32Socket>(allocator, alignof(Win32Socket), addressFamily, socketType));
 

@@ -71,7 +71,7 @@ namespace netknot {
 
 		NETKNOT_API virtual ExceptionPointer postAsyncTask(AsyncTask *task) noexcept override;
 
-		NETKNOT_API virtual ExceptionPointer createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType) noexcept override;
+		NETKNOT_API virtual ExceptionPointer createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType, Socket *&socketOut) noexcept override;
 
 		NETKNOT_API virtual ExceptionPointer compileAddress(peff::Alloc *allocator, const Address *address, CompiledAddress *&compiledAddressOut) noexcept override;
 		NETKNOT_API virtual ExceptionPointer decompileAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const CompiledAddress *address, Address &addressOut) noexcept override;
