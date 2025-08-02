@@ -101,6 +101,22 @@ NETKNOT_API ExceptionPointer Win32IOService::postAsyncTask(AsyncTask *task) noex
 }
 
 NETKNOT_API ExceptionPointer Win32IOService::createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType) noexcept {
+	std::unique_ptr<Win32Socket, peff::DeallocableDeleter<Win32Socket>> p(
+		peff::allocAndConstruct<Win32Socket>(allocator, alignof(Win32Socket), addressFamily, socketType));
+
+	if (!p)
+		return OutOfMemoryError::alloc();
+
+	SOCKET &s = p->socket;
+
+	int af;
+	if (addressFamily == ADDRFAM_IPV4) {
+		af = AF_INET;
+	} else if (addressFamily == ADDRFAM_IPV6) {
+		af = AF_INET6;
+	} else {
+		std::terminate();
+	}
 }
 
 NETKNOT_API ExceptionPointer Win32IOService::compileAddress(peff::Alloc *allocator, const Address *address, CompiledAddress *&compiledAddressOut) noexcept {

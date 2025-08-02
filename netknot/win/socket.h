@@ -70,11 +70,12 @@ namespace netknot {
 	class Win32Socket : public Socket {
 	public:
 		peff::RcObjectPtr<peff::Alloc> selfAllocator;
-		SOCKET socket;
+		SOCKET socket = INVALID_SOCKET;
 		peff::UUID socketTypeId;
 		Win32IOService *ioService;
+		peff::UUID addressFamily;
 
-		NETKNOT_API Win32Socket(SOCKET socket, const peff::UUID &socketTypeId);
+		NETKNOT_API Win32Socket(const peff::UUID &addressFamily, const peff::UUID &socketTypeId);
 		NETKNOT_API virtual ~Win32Socket();
 
 		NETKNOT_API virtual void dealloc() noexcept override;
