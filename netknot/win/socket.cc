@@ -58,6 +58,8 @@ NETKNOT_API Win32AcceptAsyncTask::Win32AcceptAsyncTask(peff::Alloc *allocator, W
 }
 
 NETKNOT_API Win32AcceptAsyncTask::~Win32AcceptAsyncTask() {
+	if (overlapped)
+		selfAllocator->release(overlapped, sizeof(Win32IOService::IOCPOverlapped), alignof(Win32IOService::IOCPOverlapped));
 }
 
 NETKNOT_API void Win32AcceptAsyncTask::onRefZero() noexcept {
@@ -222,6 +224,10 @@ NETKNOT_API ExceptionPointer Win32Socket::acceptAsync(peff::Alloc *allocator, Ac
 		0);
 
 	Win32IOService::IOCPOverlapped *overlapped;
+
+	if (!(overlapped = (Win32IOService::IOCPOverlapped*)allocator->alloc(sizeof(Win32IOService::IOCPOverlapped), alignof(Win32IOService::IOCPOverlapped)))) {
+
+	}
 
 	NETKNOT_RETURN_IF_EXCEPT(ioService->postAsyncTask(task.get()));
 
