@@ -221,6 +221,8 @@ NETKNOT_API ExceptionPointer Win32Socket::acceptAsync(peff::Alloc *allocator, Ac
 		NULL,
 		0);
 
+	Win32IOService::IOCPOverlapped *overlapped;
+
 	NETKNOT_RETURN_IF_EXCEPT(ioService->postAsyncTask(task.get()));
 
 	asyncTaskOut = task.release();

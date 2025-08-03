@@ -3,6 +3,7 @@
 
 #include "../socket.h"
 #include <WinSock2.h>
+#include <MSWSock.h>
 
 namespace netknot {
 	class Win32Socket;
