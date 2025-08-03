@@ -226,7 +226,13 @@ NETKNOT_API ExceptionPointer Win32Socket::acceptAsync(peff::Alloc *allocator, Ac
 	Win32IOService::IOCPOverlapped *overlapped;
 
 	if (!(overlapped = (Win32IOService::IOCPOverlapped*)allocator->alloc(sizeof(Win32IOService::IOCPOverlapped), alignof(Win32IOService::IOCPOverlapped)))) {
+		return OutOfMemoryError::alloc();
+	}
 
+	task->overlapped = overlapped;
+
+	if (!AcceptEx(socket, newSocket->socket, overlapped->buffer, 0, sizeof(sockaddr_in) + 16, sizeof(sockaddr_in) + 16, &overlapped->szRecv, overlapped)) {
+		std::terminate();
 	}
 
 	NETKNOT_RETURN_IF_EXCEPT(ioService->postAsyncTask(task.get()));

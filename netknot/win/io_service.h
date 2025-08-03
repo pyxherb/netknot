@@ -41,6 +41,8 @@ namespace netknot {
 
 		struct IOCPOverlapped : public OVERLAPPED {
 			AsyncTask *asyncTask;
+			DWORD szRecv;
+			char buffer[(sizeof(sockaddr_in) + 16) * 2];
 		};
 
 		peff::RcObjectPtr<peff::Alloc> selfAllocator;
