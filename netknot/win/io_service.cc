@@ -45,6 +45,9 @@ NETKNOT_API Win32IOService::Win32IOService(peff::Alloc *selfAllocator)
 }
 
 NETKNOT_API Win32IOService::~Win32IOService() {
+	sortedThreadIndices.clear();
+	sortedThreadIndices.replaceAllocator(nullptr);
+
 	if (sortedThreadIndicesBuffer) {
 		selfAllocator->release(sortedThreadIndicesBuffer, szSortedThreadIndicesBuffer, alignSortedThreadIndicesBuffer);
 	}
@@ -266,6 +269,8 @@ NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService *&ioServi
 
 		ioService->szSortedThreadIndicesBuffer = szBuffer;
 		ioService->alignSortedThreadIndicesBuffer = alignment;
+
+		ioService->sortedThreadIndices.replaceAllocator(&ioService->sortedThreadIndicesAlloc);
 	}
 
 	{
@@ -285,6 +290,10 @@ NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService *&ioServi
 
 		ioService->szSortedThreadSetBuffer = szBuffer;
 		ioService->alignSortedThreadSetBuffer = alignment;
+
+		for (size_t i = 0; i < params.nWorkerThreads; ++i) {
+			peff::constructAt<peff::Set<size_t>>(&ioService->sortedThreadIndices.at(i), &ioService->sortedThreadSetAlloc);
+		}
 	}
 
 	ioServiceOut = ioService.release();
