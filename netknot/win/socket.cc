@@ -59,7 +59,7 @@ NETKNOT_API Win32AcceptAsyncTask::Win32AcceptAsyncTask(peff::Alloc *allocator, W
 
 NETKNOT_API Win32AcceptAsyncTask::~Win32AcceptAsyncTask() {
 	if (overlapped)
-		selfAllocator->release(overlapped, sizeof(Win32IOService::IOCPOverlapped), alignof(Win32IOService::IOCPOverlapped));
+		selfAllocator->release(overlapped, sizeof(Win32IOCPOverlapped), alignof(Win32IOCPOverlapped));
 }
 
 NETKNOT_API void Win32AcceptAsyncTask::onRefZero() noexcept {
@@ -223,9 +223,9 @@ NETKNOT_API ExceptionPointer Win32Socket::acceptAsync(peff::Alloc *allocator, Ac
 		NULL,
 		0);
 
-	Win32IOService::IOCPOverlapped *overlapped;
+	Win32IOCPOverlapped *overlapped;
 
-	if (!(overlapped = (Win32IOService::IOCPOverlapped*)allocator->alloc(sizeof(Win32IOService::IOCPOverlapped), alignof(Win32IOService::IOCPOverlapped)))) {
+	if (!(overlapped = (Win32IOCPOverlapped*)allocator->alloc(sizeof(Win32IOCPOverlapped), alignof(Win32IOCPOverlapped)))) {
 		return OutOfMemoryError::alloc();
 	}
 

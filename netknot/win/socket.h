@@ -8,7 +8,7 @@
 namespace netknot {
 	class Win32Socket;
 	class Win32IOService;
-	struct Win32IOService::IOCPOverlapped;
+	struct Win32IOCPOverlapped;
 
 	class Win32ReadAsyncTask : public ReadAsyncTask {
 	public:
@@ -59,7 +59,7 @@ namespace netknot {
 		Win32Socket *socket;
 		peff::UUID addressFamily;
 		ExceptionPointer exceptPtr;
-		Win32IOService::IOCPOverlapped *overlapped = nullptr;
+		Win32IOCPOverlapped *overlapped = nullptr;
 
 		NETKNOT_API Win32AcceptAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const peff::UUID &addressFamily);
 		NETKNOT_API virtual ~Win32AcceptAsyncTask();

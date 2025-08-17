@@ -22,6 +22,12 @@ namespace netknot {
 		NETKNOT_API virtual void dealloc() noexcept override;
 	};
 
+	struct Win32IOCPOverlapped : public OVERLAPPED {
+		AsyncTask *asyncTask;
+		DWORD szRecv;
+		char buffer[(sizeof(sockaddr_in) + 16) * 2];
+	};
+
 	class Win32IOService : public IOService {
 	public:
 		NETKNOT_API static DWORD WINAPI _workerThreadProc(LPVOID lpThreadParameter);
@@ -37,12 +43,6 @@ namespace netknot {
 			NETKNOT_FORCEINLINE ThreadLocalData(Win32IOService *ioService, size_t threadId, peff::Alloc *allocator) : ioService(ioService), threadId(threadId), currentTasks(allocator), doneTasks(allocator) {
 			}
 			NETKNOT_API ~ThreadLocalData();
-		};
-
-		struct IOCPOverlapped : public OVERLAPPED {
-			AsyncTask *asyncTask;
-			DWORD szRecv;
-			char buffer[(sizeof(sockaddr_in) + 16) * 2];
 		};
 
 		peff::RcObjectPtr<peff::Alloc> selfAllocator;

@@ -25,7 +25,7 @@ NETKNOT_API DWORD WINAPI Win32IOService::_workerThreadProc(LPVOID lpThreadParame
 
 		GetQueuedCompletionStatus(tld->ioService->iocpCompletionPort, &szTransferred, &key, &ov, INFINITE);
 
-		IOCPOverlapped *iocpOverlapped = (IOCPOverlapped *)ov;
+		Win32IOCPOverlapped *iocpOverlapped = (Win32IOCPOverlapped *)ov;
 	}
 }
 
