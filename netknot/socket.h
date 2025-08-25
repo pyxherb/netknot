@@ -137,7 +137,7 @@ namespace netknot {
 
 		virtual void dealloc() noexcept = 0;
 
-		virtual ExceptionPointer onStatusChanged(WriteAsyncTask *task) = 0;
+		virtual ExceptionPointer onAccepted(Socket *socket) = 0;
 	};
 
 	class Socket {
@@ -159,7 +159,7 @@ namespace netknot {
 
 		virtual ExceptionPointer readAsync(peff::Alloc *allocator, const RcBufferRef &buffer, ReadAsyncCallback *callback, ReadAsyncTask *&asyncTaskOut) = 0;
 		virtual ExceptionPointer writeAsync(peff::Alloc *allocator, const RcBufferRef &buffer, WriteAsyncCallback *callback, WriteAsyncTask *&asyncTaskOut) = 0;
-		virtual ExceptionPointer acceptAsync(peff::Alloc *allocator, AcceptAsyncTask *&asyncTaskOut) = 0;
+		virtual ExceptionPointer acceptAsync(peff::Alloc *allocator, AcceptAsyncCallback *callback, AcceptAsyncTask *&asyncTaskOut) = 0;
 	};
 }
 

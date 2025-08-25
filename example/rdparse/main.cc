@@ -2,8 +2,43 @@
 #include <peff/base/deallocable.h>
 #include <peff/advutils/unique_ptr.h>
 
-class HttpServer {
+class HttpServer;
 
+class Connection {
+public:
+	HttpServer *httpServer;
+	peff::RcObjectPtr<peff::Alloc> selfAllocator;
+
+	Connection(peff::Alloc *allocator, HttpServer *httpServer) : selfAllocator(allocator), httpServer(httpServer) {
+	}
+
+	~Connection() {
+	}
+
+	void dealloc() noexcept {
+		peff::destroyAndRelease<Connection>(selfAllocator.get(), this, alignof(Connection));
+	}
+};
+
+class HttpServer {
+public:
+};
+
+class HttpAcceptAsyncCallback : public netknot::AcceptAsyncCallback {
+public:
+	HttpServer *httpServer;
+
+	HttpAcceptAsyncCallback(HttpServer *httpServer): httpServer(httpServer) {
+	}
+
+	virtual ~HttpAcceptAsyncCallback() {
+	}
+
+	virtual void dealloc() noexcept override {
+	}
+
+	virtual netknot::ExceptionPointer onAccepted(netknot::Socket *socket) {
+	}
 };
 
 int main() {
@@ -38,8 +73,11 @@ int main() {
 			std::terminate();
 		}
 
+		HttpServer httpServer;
+
+		HttpAcceptAsyncCallback callback(&httpServer);
 		peff::RcObjectPtr<netknot::AcceptAsyncTask> acceptAsyncTask;
-		if ((e = socket->acceptAsync(peff::getDefaultAlloc(), acceptAsyncTask.getRef()))) {
+		if ((e = socket->acceptAsync(peff::getDefaultAlloc(), &callback, acceptAsyncTask.getRef()))) {
 			std::terminate();
 		}
 

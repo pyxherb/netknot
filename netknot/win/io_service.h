@@ -23,9 +23,12 @@ namespace netknot {
 	};
 
 	struct Win32IOCPOverlapped : public OVERLAPPED {
+		WSABUF buf;
+		size_t addrSize;
 		AsyncTask *asyncTask;
-		DWORD szRecv;
-		char buffer[(sizeof(sockaddr_in) + 16) * 2];
+		DWORD szOperated;
+		DWORD flags;
+		char addr[];
 	};
 
 	class Win32IOService : public IOService {
@@ -38,12 +41,16 @@ namespace netknot {
 			size_t threadId;
 			peff::Set<peff::RcObjectPtr<AsyncTask>> currentTasks, doneTasks;
 			bool terminate = false;
+			ExceptionPointer exceptionStorage;
 
 			NETKNOT_FORCEINLINE ThreadLocalData(ThreadLocalData &&) = default;
 			NETKNOT_FORCEINLINE ThreadLocalData(Win32IOService *ioService, size_t threadId, peff::Alloc *allocator) : ioService(ioService), threadId(threadId), currentTasks(allocator), doneTasks(allocator) {
 			}
 			NETKNOT_API ~ThreadLocalData();
 		};
+
+		CRITICAL_SECTION terminateNotifyCriticalSection;
+		CONDITION_VARIABLE terminateNotifyConditionVar;
 
 		peff::RcObjectPtr<peff::Alloc> selfAllocator;
 		HANDLE iocpCompletionPort = INVALID_HANDLE_VALUE;
@@ -69,13 +76,13 @@ namespace netknot {
 
 		NETKNOT_API virtual void dealloc() noexcept override;
 
-		NETKNOT_API virtual void run() override;
+		NETKNOT_API virtual bool run() override;
 
 		NETKNOT_API virtual ExceptionPointer postAsyncTask(AsyncTask *task) noexcept override;
 
 		NETKNOT_API virtual ExceptionPointer createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType, Socket *&socketOut) noexcept override;
 
-		NETKNOT_API virtual ExceptionPointer compileAddress(peff::Alloc *allocator, const Address *address, CompiledAddress *&compiledAddressOut) noexcept override;
+		NETKNOT_API virtual ExceptionPointer compileAddress(peff::Alloc *allocator, const Address *address, CompiledAddress **compiledAddressOut, size_t *compiledAddressSizeOut = nullptr) noexcept override;
 		NETKNOT_API virtual ExceptionPointer decompileAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const CompiledAddress *address, Address &addressOut) noexcept override;
 
 		NETKNOT_API void addIntoOrInsertNewSortedThreadGroup(size_t load, size_t index);

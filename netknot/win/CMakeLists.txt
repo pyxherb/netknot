@@ -4,7 +4,7 @@ target_sources(netknot_static PRIVATE ${HEADERS} ${SRC})
 target_link_libraries(netknot_static PRIVATE peff_advutils_static WS2_32 MSWSock)
 if(NETKNOT_BUILD_SHARED)
     target_sources(netknot PRIVATE ${HEADERS} ${SRC})
-    target_link_libraries(netknot PRIVATE peff_advutils_static WS2_32 MSWSock)
+    target_link_libraries(netknot PRIVATE peff_advutils WS2_32 MSWSock)
 endif()
 
 install(FILES ${HEADERS} DESTINATION ${CMAKE_INSTALL_PREFIX}/include/netknot/win)

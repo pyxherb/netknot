@@ -26,6 +26,43 @@ NETKNOT_API DWORD WINAPI Win32IOService::_workerThreadProc(LPVOID lpThreadParame
 		GetQueuedCompletionStatus(tld->ioService->iocpCompletionPort, &szTransferred, &key, &ov, INFINITE);
 
 		Win32IOCPOverlapped *iocpOverlapped = (Win32IOCPOverlapped *)ov;
+
+		switch (iocpOverlapped->asyncTask->getTaskType()) {
+			case AsyncTaskType::Read: {
+				Win32ReadAsyncTask *task = (Win32ReadAsyncTask *)iocpOverlapped->asyncTask;
+
+				task->status = AsyncTaskStatus::Done;
+
+				if ((tld->exceptionStorage = task->callback->onStatusChanged(task))) {
+					WakeAllConditionVariable(&tld->ioService->terminateNotifyConditionVar);
+					return -1;
+				}
+				break;
+			}
+			case AsyncTaskType::Write: {
+				Win32WriteAsyncTask *task = (Win32WriteAsyncTask *)iocpOverlapped->asyncTask;
+
+				task->status = AsyncTaskStatus::Done;
+
+				if ((tld->exceptionStorage = task->callback->onStatusChanged(task))) {
+					WakeAllConditionVariable(&tld->ioService->terminateNotifyConditionVar);
+					return -1;
+				}
+				break;
+			}
+			case AsyncTaskType::Accept: {
+				Win32AcceptAsyncTask *task = (Win32AcceptAsyncTask *)iocpOverlapped->asyncTask;
+
+				task->status = AsyncTaskStatus::Done;
+
+				if ((tld->exceptionStorage = task->callback->onAccepted(task->socket))) {
+					WakeAllConditionVariable(&tld->ioService->terminateNotifyConditionVar);
+					return -1;
+				}
+
+				break;
+			}
+		}
 	}
 }
 
@@ -54,6 +91,9 @@ NETKNOT_API Win32IOService::~Win32IOService() {
 	if (sortedThreadSetBuffer) {
 		selfAllocator->release(sortedThreadSetBuffer, szSortedThreadSetBuffer, alignSortedThreadSetBuffer);
 	}
+
+	DeleteCriticalSection(&threadResortCriticalSection);
+	DeleteCriticalSection(&terminateNotifyCriticalSection);
 }
 
 NETKNOT_API Win32IOService *Win32IOService::alloc(peff::Alloc *selfAllocator) {
@@ -69,12 +109,14 @@ NETKNOT_API Win32IOService *Win32IOService::alloc(peff::Alloc *selfAllocator) {
 NETKNOT_API void Win32IOService::dealloc() noexcept {
 }
 
-NETKNOT_API void Win32IOService::run() {
+NETKNOT_API bool Win32IOService::run() {
 	sortThreadsByLoad();
 
 	for (auto &i : threadLocalData) {
 		ResumeThread(i.hThread);
 	}
+
+	SleepConditionVariableCS(&terminateNotifyConditionVar, &terminateNotifyCriticalSection, INFINITE);
 }
 
 NETKNOT_API ExceptionPointer Win32IOService::postAsyncTask(AsyncTask *task) noexcept {
@@ -138,31 +180,36 @@ NETKNOT_API ExceptionPointer Win32IOService::createSocket(peff::Alloc *allocator
 	return {};
 }
 
-NETKNOT_API ExceptionPointer Win32IOService::compileAddress(peff::Alloc *allocator, const Address *address, CompiledAddress *&compiledAddressOut) noexcept {
+NETKNOT_API ExceptionPointer Win32IOService::compileAddress(peff::Alloc *allocator, const Address *address, CompiledAddress **compiledAddressOut, size_t *compiledAddressSizeOut) noexcept {
 	if (address->addressFamily == ADDRFAM_IPV4) {
 		SOCKADDR_IN sa = { 0 };
 
-		if (address) {
-			const IPv4Address *addr = (const IPv4Address *)address;
+		if (!compiledAddressOut) {
+			*compiledAddressSizeOut = sizeof(sa);
+			return {};
+		} else {
+			if (address) {
+				const IPv4Address *addr = (const IPv4Address *)address;
 
-			sa.sin_family = AF_INET;
-			sa.sin_addr.s_addr = ((addr->a << 24) | (addr->b << 16) | (addr->c << 8) | (addr->d));
-			sa.sin_port = htons(addr->port);
+				sa.sin_family = AF_INET;
+				sa.sin_addr.s_addr = ((addr->a << 24) | (addr->b << 16) | (addr->c << 8) | (addr->d));
+				sa.sin_port = htons(addr->port);
+			}
+
+			std::unique_ptr<Win32CompiledAddress, peff::DeallocableDeleter<Win32CompiledAddress>>
+				compiledAddress(peff::allocAndConstruct<Win32CompiledAddress>(allocator, alignof(Win32CompiledAddress), allocator));
+
+			if (!compiledAddress)
+				return OutOfMemoryError::alloc();
+
+			if (!(compiledAddress->data = (char *)allocator->alloc(sizeof(sa), 1))) {
+				return OutOfMemoryError::alloc();
+			}
+
+			compiledAddress->size = sizeof(sa);
+
+			*compiledAddressOut = compiledAddress.release();
 		}
-
-		std::unique_ptr<Win32CompiledAddress, peff::DeallocableDeleter<Win32CompiledAddress>>
-			compiledAddress(peff::allocAndConstruct<Win32CompiledAddress>(allocator, alignof(Win32CompiledAddress), allocator));
-
-		if (!compiledAddress)
-			return OutOfMemoryError::alloc();
-
-		if (!(compiledAddress->data = (char *)allocator->alloc(sizeof(sa), 1))) {
-			return OutOfMemoryError::alloc();
-		}
-
-		compiledAddress->size = sizeof(sa);
-
-		compiledAddressOut = compiledAddress.release();
 
 		return {};
 	} else if (address->addressFamily == ADDRFAM_IPV6) {
@@ -254,9 +301,8 @@ NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService *&ioServi
 
 	{
 		const size_t szBuffer = (peff::BufferAlloc::calcAllocSize(
-									sizeof(peff::Map<size_t, peff::Set<size_t>>::NodeType),
-									alignof(std::max_align_t))) *
-								params.nWorkerThreads,
+						 sizeof(peff::Map<size_t, peff::Set<size_t>>::NodeType),
+						 alignof(std::max_align_t)))*params.nWorkerThreads,
 					 alignment = alignof(std::max_align_t);
 
 		if (!(ioService->sortedThreadIndicesBuffer = (char *)params.allocator->alloc(
@@ -275,9 +321,8 @@ NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService *&ioServi
 
 	{
 		const size_t szBuffer = (peff::BufferAlloc::calcAllocSize(
-									sizeof(peff::Set<size_t>::NodeType),
-									alignof(std::max_align_t))) *
-								params.nWorkerThreads,
+						 sizeof(peff::Set<size_t>::NodeType),
+						 alignof(std::max_align_t)))*params.nWorkerThreads,
 					 alignment = alignof(std::max_align_t);
 
 		if (!(ioService->sortedThreadSetBuffer = (char *)params.allocator->alloc(
@@ -295,6 +340,11 @@ NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService *&ioServi
 			peff::constructAt<peff::Set<size_t>>(&ioService->sortedThreadIndices.at(i), &ioService->sortedThreadSetAlloc);
 		}
 	}
+
+	InitializeCriticalSection(&ioService->terminateNotifyCriticalSection);
+	InitializeConditionVariable(&ioService->terminateNotifyConditionVar);
+
+	InitializeCriticalSection(&ioService->threadResortCriticalSection);
 
 	ioServiceOut = ioService.release();
 

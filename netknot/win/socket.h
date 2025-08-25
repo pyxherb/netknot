@@ -4,6 +4,7 @@
 #include "../socket.h"
 #include <WinSock2.h>
 #include <MSWSock.h>
+#include <peff/advutils/unique_ptr.h>
 
 namespace netknot {
 	class Win32Socket;
@@ -18,6 +19,8 @@ namespace netknot {
 		RcBufferRef bufferRef;
 		size_t szRead = 0;
 		ExceptionPointer exceptPtr;
+		Win32IOCPOverlapped *overlapped = nullptr;
+		peff::UniquePtr<ReadAsyncCallback, peff::DeallocableDeleter<ReadAsyncCallback>> callback;
 
 		NETKNOT_API Win32ReadAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const RcBufferRef &bufferRef);
 		NETKNOT_API virtual ~Win32ReadAsyncTask();
@@ -39,6 +42,8 @@ namespace netknot {
 		RcBufferRef bufferRef;
 		size_t szWritten = 0;
 		ExceptionPointer exceptPtr;
+		Win32IOCPOverlapped *overlapped = nullptr;
+		peff::UniquePtr<WriteAsyncCallback, peff::DeallocableDeleter<WriteAsyncCallback>> callback;
 
 		NETKNOT_API Win32WriteAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const RcBufferRef &bufferRef);
 		NETKNOT_API virtual ~Win32WriteAsyncTask();
@@ -60,6 +65,7 @@ namespace netknot {
 		peff::UUID addressFamily;
 		ExceptionPointer exceptPtr;
 		Win32IOCPOverlapped *overlapped = nullptr;
+		peff::UniquePtr<AcceptAsyncCallback, peff::DeallocableDeleter<AcceptAsyncCallback>> callback;
 
 		NETKNOT_API Win32AcceptAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const peff::UUID &addressFamily);
 		NETKNOT_API virtual ~Win32AcceptAsyncTask();
@@ -95,7 +101,7 @@ namespace netknot {
 
 		NETKNOT_API virtual ExceptionPointer readAsync(peff::Alloc *allocator, const RcBufferRef &buffer, ReadAsyncCallback *callback, ReadAsyncTask *&asyncTaskOut) override;
 		NETKNOT_API virtual ExceptionPointer writeAsync(peff::Alloc *allocator, const RcBufferRef &buffer, WriteAsyncCallback *callback, WriteAsyncTask *&asyncTaskOut) override;
-		NETKNOT_API virtual ExceptionPointer acceptAsync(peff::Alloc *allocator, AcceptAsyncTask *&asyncTaskOut) override;
+		NETKNOT_API virtual ExceptionPointer acceptAsync(peff::Alloc *allocator, AcceptAsyncCallback *callback, AcceptAsyncTask *&asyncTaskOut) override;
 	};
 }
 
