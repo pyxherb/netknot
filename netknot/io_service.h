@@ -22,7 +22,7 @@ namespace netknot {
 
 		virtual void dealloc() noexcept = 0;
 
-		[[nodiscard]] virtual bool run() = 0;
+		[[nodiscard]] virtual ExceptionPointer run() = 0;
 
 		virtual ExceptionPointer postAsyncTask(AsyncTask *task) noexcept = 0;
 

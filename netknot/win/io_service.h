@@ -76,7 +76,7 @@ namespace netknot {
 
 		NETKNOT_API virtual void dealloc() noexcept override;
 
-		NETKNOT_API virtual bool run() override;
+		NETKNOT_API virtual ExceptionPointer run() override;
 
 		NETKNOT_API virtual ExceptionPointer postAsyncTask(AsyncTask *task) noexcept override;
 

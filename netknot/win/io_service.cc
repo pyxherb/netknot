@@ -109,7 +109,7 @@ NETKNOT_API Win32IOService *Win32IOService::alloc(peff::Alloc *selfAllocator) {
 NETKNOT_API void Win32IOService::dealloc() noexcept {
 }
 
-NETKNOT_API bool Win32IOService::run() {
+NETKNOT_API ExceptionPointer Win32IOService::run() {
 	sortThreadsByLoad();
 
 	for (auto &i : threadLocalData) {
@@ -117,6 +117,8 @@ NETKNOT_API bool Win32IOService::run() {
 	}
 
 	SleepConditionVariableCS(&terminateNotifyConditionVar, &terminateNotifyCriticalSection, INFINITE);
+
+	return {};
 }
 
 NETKNOT_API ExceptionPointer Win32IOService::postAsyncTask(AsyncTask *task) noexcept {

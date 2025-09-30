@@ -82,7 +82,8 @@ NETKNOT_API Win32Socket::Win32Socket(Win32IOService *ioService, const peff::UUID
 }
 
 NETKNOT_API Win32Socket::~Win32Socket() {
-	close();
+	if (socket != INVALID_SOCKET)
+		std::terminate();
 }
 
 NETKNOT_API void Win32Socket::dealloc() noexcept {
