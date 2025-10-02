@@ -39,7 +39,7 @@ namespace netknot {
 			Win32IOService *ioService;
 			HANDLE hThread = INVALID_HANDLE_VALUE;
 			size_t threadId;
-			peff::Set<peff::RcObjectPtr<AsyncTask>> currentTasks, doneTasks;
+			peff::Set<peff::RcObjectPtr<AsyncTask>> currentTasks;
 			bool terminate = false;
 			ExceptionPointer exceptionStorage;
 

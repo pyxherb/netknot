@@ -58,7 +58,7 @@ namespace netknot {
 
 		NETKNOT_FORCEINLINE void unwrap() noexcept {
 			if (_ptr) {
-				assert(("Unhandled NetKnot exception: ", false));
+				assert(("Unhandled Netknot exception: ", false));
 			}
 		}
 
@@ -77,9 +77,9 @@ namespace netknot {
 }
 
 #define NETKNOT_UNWRAP_EXCEPT(expr) (expr).unwrap()
-#define NETKNOT_RETURN_IF_EXCEPT(expr)                         \
-	if (netknot::ExceptionPointer e = (expr); (bool)e) \
-	return e
+#define NETKNOT_RETURN_IF_EXCEPT(expr)                 \
+	if (netknot::ExceptionPointer _ = (expr); (bool)_) \
+	return _
 #define NETKNOT_RETURN_IF_EXCEPT_WITH_LVAR(name, expr) \
 	if ((bool)(name = (expr)))                         \
 		return name;

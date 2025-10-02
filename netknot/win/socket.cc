@@ -30,6 +30,14 @@ NETKNOT_API size_t Win32ReadAsyncTask::getExpectedReadSize() {
 	return bufferRef.size;
 }
 
+NETKNOT_API char *Win32ReadAsyncTask::getBuffer() {
+	return bufferRef.buffer->data + bufferRef.offset;
+}
+
+NETKNOT_API RcBufferRef Win32ReadAsyncTask::getBufferRef() {
+	return bufferRef;
+}
+
 NETKNOT_API Win32WriteAsyncTask::Win32WriteAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const RcBufferRef &bufferRef) : selfAllocator(allocator), socket(socket), bufferRef(bufferRef) {
 }
 

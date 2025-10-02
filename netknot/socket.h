@@ -93,6 +93,8 @@ namespace netknot {
 
 		virtual size_t getCurrentReadSize() = 0;
 		virtual size_t getExpectedReadSize() = 0;
+		virtual char *getBuffer() = 0;
+		virtual RcBufferRef getBufferRef() = 0;
 	};
 
 	class WriteAsyncTask : public AsyncTask {

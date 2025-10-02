@@ -32,6 +32,9 @@ namespace netknot {
 
 		NETKNOT_API virtual size_t getCurrentReadSize() override;
 		NETKNOT_API virtual size_t getExpectedReadSize() override;
+
+		NETKNOT_API virtual char *getBuffer() override;
+		NETKNOT_API virtual RcBufferRef getBufferRef() override;
 	};
 
 	class Win32WriteAsyncTask : public WriteAsyncTask {

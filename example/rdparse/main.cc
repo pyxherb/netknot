@@ -1,6 +1,7 @@
 #include <netknot/io_service.h>
 #include <peff/base/deallocable.h>
 #include <peff/containers/set.h>
+#include <peff/containers/string.h>
 #include <peff/advutils/unique_ptr.h>
 
 class HttpServer;
@@ -28,9 +29,10 @@ public:
 
 class HttpServer {
 public:
+	peff::RcObjectPtr<peff::Alloc> allocator;
 	peff::Set<peff::UniquePtr<Connection, peff::DeallocableDeleter<Connection>>> connections;
 
-	HttpServer(peff::Alloc *allocator) : connections(allocator) {}
+	HttpServer(peff::Alloc *allocator) : allocator(allocator), connections(allocator) {}
 
 	[[nodiscard]] bool addConnection(Connection *conn) noexcept {
 		if (!connections.insert({ conn }))
@@ -76,12 +78,21 @@ public:
 	}
 };
 
+enum class HttpParseStatus : uint8_t {
+	Initial = 0,
+	Header,
+	Body
+};
+
 class HttpReadAsyncCallback : public netknot::ReadAsyncCallback {
 public:
 	peff::RcObjectPtr<peff::Alloc> selfAllocator;
 	HttpServer *httpServer;
+	Connection *connection;
+	HttpParseStatus parseStatus = HttpParseStatus::Initial;
+	peff::String requestLine, lastReadHeaderLinePart, body;
 
-	HttpReadAsyncCallback(HttpServer *httpServer, peff::Alloc *selfAllocator) : httpServer(httpServer), selfAllocator(selfAllocator) {
+	HttpReadAsyncCallback(HttpServer *httpServer, Connection *connectiono, peff::Alloc *selfAllocator) : httpServer(httpServer), connection(connection), selfAllocator(selfAllocator), requestLine(selfAllocator), lastReadHeaderLinePart(selfAllocator), body(selfAllocator) {
 	}
 
 	virtual ~HttpReadAsyncCallback() {
@@ -92,6 +103,75 @@ public:
 	}
 
 	virtual netknot::ExceptionPointer onStatusChanged(netknot::ReadAsyncTask *task) noexcept override {
+		switch (task->getStatus()) {
+			case netknot::AsyncTaskStatus::Done: {
+				const char *const p = task->getBuffer();
+				const size_t realSize = task->getCurrentReadSize();
+				std::string_view sv(p, realSize);
+				size_t offNext = 0;
+
+				auto readNext = [this]() -> netknot::ExceptionPointer {
+					netknot::ReadAsyncTask *task;
+					return connection->socket->readAsync(httpServer->allocator.get(), task->getBufferRef(), this, task);
+				};
+
+				switch (parseStatus) {
+					case HttpParseStatus::Initial: {
+						size_t offSeparator = sv.find("\n\n");
+
+						if (offSeparator != std::string_view::npos) {
+							std::string_view requestLine = sv.substr(0, offSeparator + 1);
+							if (!this->requestLine.append(requestLine)) {
+								return netknot::OutOfMemoryError::alloc();
+							}
+						} else {
+							if (!this->requestLine.append(sv)) {
+								return netknot::OutOfMemoryError::alloc();
+							}
+
+							return readNext();
+						}
+
+						offNext = offSeparator + 2;
+
+						if (offNext >= realSize)
+							break;
+						parseStatus = HttpParseStatus::Header;
+						[[fallthrough]];
+					}
+					case HttpParseStatus::Header: {
+						size_t offSeparator = sv.find("\n\n");
+
+						if (offSeparator != std::string_view::npos) {
+							std::string_view requestHeaders = sv.substr(offNext, offSeparator + 1);
+							if(!lastReadHeaderLinePart.append(sv))
+								return netknot::OutOfMemoryError::alloc();
+							offNext = offSeparator + 2;
+						} else {
+							if (!lastReadHeaderLinePart.append(sv))
+								return netknot::OutOfMemoryError::alloc();
+
+							return readNext();
+						}
+
+						if (offNext >= realSize)
+							break;
+						parseStatus = HttpParseStatus::Body;
+						[[fallthrough]];
+					}
+					case HttpParseStatus::Body: {
+						break;
+					}
+				}
+
+				break;
+			}
+			case netknot::AsyncTaskStatus::Interrupted: {
+				break;
+			}
+			default:
+				return {};
+		}
 	}
 };
 

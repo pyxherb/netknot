@@ -37,6 +37,9 @@ NETKNOT_API DWORD WINAPI Win32IOService::_workerThreadProc(LPVOID lpThreadParame
 					WakeAllConditionVariable(&tld->ioService->terminateNotifyConditionVar);
 					return -1;
 				}
+
+				tld->currentTasks.remove(task);
+
 				break;
 			}
 			case AsyncTaskType::Write: {
@@ -48,6 +51,8 @@ NETKNOT_API DWORD WINAPI Win32IOService::_workerThreadProc(LPVOID lpThreadParame
 					WakeAllConditionVariable(&tld->ioService->terminateNotifyConditionVar);
 					return -1;
 				}
+
+				tld->currentTasks.remove(task);
 				break;
 			}
 			case AsyncTaskType::Accept: {
@@ -60,6 +65,7 @@ NETKNOT_API DWORD WINAPI Win32IOService::_workerThreadProc(LPVOID lpThreadParame
 					return -1;
 				}
 
+				tld->currentTasks.remove(task);
 				break;
 			}
 		}
@@ -112,11 +118,19 @@ NETKNOT_API void Win32IOService::dealloc() noexcept {
 NETKNOT_API ExceptionPointer Win32IOService::run() {
 	sortThreadsByLoad();
 
+	for (auto& i : threadLocalData) {
+		NETKNOT_RETURN_IF_EXCEPT(std::move(i.exceptionStorage));
+	}
+
 	for (auto &i : threadLocalData) {
 		ResumeThread(i.hThread);
 	}
 
 	SleepConditionVariableCS(&terminateNotifyConditionVar, &terminateNotifyCriticalSection, INFINITE);
+
+	for (auto& i : threadLocalData) {
+		NETKNOT_RETURN_IF_EXCEPT(std::move(i.exceptionStorage));
+	}
 
 	return {};
 }
