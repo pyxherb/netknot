@@ -3,6 +3,7 @@
 #include <peff/containers/set.h>
 #include <peff/containers/string.h>
 #include <peff/advutils/unique_ptr.h>
+#include <peff/containers/hashmap.h>
 
 class HttpServer;
 
@@ -84,15 +85,30 @@ enum class HttpParseStatus : uint8_t {
 	Body
 };
 
+struct HttpRequestLineView {
+	std::string_view method;
+	std::string_view path;
+	std::string_view version;
+};
+
+struct HttpRequestHeaderView {
+	peff::HashMap<std::string_view, std::string_view> headers;
+
+	HttpRequestHeaderView(peff::Alloc *allocator) : headers(allocator) {}
+};
+
 class HttpReadAsyncCallback : public netknot::ReadAsyncCallback {
 public:
 	peff::RcObjectPtr<peff::Alloc> selfAllocator;
 	HttpServer *httpServer;
 	Connection *connection;
 	HttpParseStatus parseStatus = HttpParseStatus::Initial;
-	peff::String requestLine, lastReadHeaderLinePart, body;
+	peff::String requestLine, requestHeader, body;
+	HttpRequestLineView requestLineView;
+	HttpRequestHeaderView requestHeaderView;
+	size_t expectedBodySize = SIZE_MAX;
 
-	HttpReadAsyncCallback(HttpServer *httpServer, Connection *connectiono, peff::Alloc *selfAllocator) : httpServer(httpServer), connection(connection), selfAllocator(selfAllocator), requestLine(selfAllocator), lastReadHeaderLinePart(selfAllocator), body(selfAllocator) {
+	HttpReadAsyncCallback(HttpServer *httpServer, Connection *connectiono, peff::Alloc *selfAllocator) : httpServer(httpServer), connection(connection), selfAllocator(selfAllocator), requestLine(selfAllocator), requestHeader(selfAllocator), body(selfAllocator) {
 	}
 
 	virtual ~HttpReadAsyncCallback() {
@@ -100,6 +116,70 @@ public:
 
 	virtual void dealloc() noexcept override {
 		peff::destroyAndRelease<HttpReadAsyncCallback>(selfAllocator.get(), this, alignof(HttpReadAsyncCallback));
+	}
+
+	peff::Option<HttpRequestLineView> parseHttpRequestLine() {
+		std::string_view sv = requestLine;
+		HttpRequestLineView view;
+
+		size_t separator;
+
+		if ((separator = sv.find(' ')) == std::string_view::npos) {
+			return {};
+		}
+		view.method = sv.substr(0, separator);
+
+		sv = sv.substr(separator + 1);
+
+		if ((separator = sv.find(' ')) == std::string_view::npos) {
+			return {};
+		}
+		view.path = sv.substr(0, separator);
+
+		sv = sv.substr(separator + 1);
+		view.method = sv.substr(0, separator);
+
+		return std::move(view);
+	}
+
+	peff::Option<HttpRequestHeaderView> parseHttpRequestHeader() {
+		std::string_view sv = requestHeader;
+		HttpRequestHeaderView view(selfAllocator.get());
+
+		size_t separator;
+
+		std::string_view name;
+		std::string_view content;
+
+		while (sv.size()) {
+			name = {};
+			content = {};
+
+			if ((separator = sv.find(':')) == std::string_view::npos) {
+				return {};
+			}
+			name = sv.substr(0, separator);
+
+			sv = sv.substr(separator + 1);
+
+			if ((separator = sv.find_first_not_of(' ')) == std::string_view::npos) {
+				return {};
+			}
+			sv = sv.substr(separator + 1);
+
+			size_t endOfLine;
+			if ((endOfLine = sv.find("\r\n")) == std::string_view::npos) {
+				return {};
+			}
+
+			content = sv.substr(0, endOfLine);
+			sv = sv.substr(endOfLine + 1);
+
+			if (!view.headers.insert(std::move(name), std::move(content)))
+				return {};
+		}
+
+		return std::move(view);
 	}
 
 	virtual netknot::ExceptionPointer onStatusChanged(netknot::ReadAsyncTask *task) noexcept override {
@@ -117,45 +197,90 @@ public:
 
 				switch (parseStatus) {
 					case HttpParseStatus::Initial: {
-						size_t offSeparator = sv.find("\n\n");
+						size_t offSeparator = sv.find("\r\n");
 
 						if (offSeparator != std::string_view::npos) {
 							std::string_view requestLine = sv.substr(0, offSeparator + 1);
 							if (!this->requestLine.append(requestLine)) {
 								return netknot::OutOfMemoryError::alloc();
 							}
+
+							offNext = offSeparator + 2;
+
+							if (offNext >= sv.size())
+								return readNext();
+
+							sv = sv.substr(offNext + 1);
 						} else {
 							if (!this->requestLine.append(sv)) {
 								return netknot::OutOfMemoryError::alloc();
 							}
-
-							return readNext();
+							std::string_view combinedSv = this->requestLine;
+							if ((offSeparator = combinedSv.find("\r\n")) == std::string_view::npos)
+								return readNext();
 						}
 
-						offNext = offSeparator + 2;
+						if (auto result = parseHttpRequestLine(); result.hasValue()) {
+							requestLineView = std::move(result.value());
+							result.reset();
+						} else {
+							std::terminate();
+						}
 
-						if (offNext >= realSize)
-							break;
 						parseStatus = HttpParseStatus::Header;
 						[[fallthrough]];
 					}
 					case HttpParseStatus::Header: {
-						size_t offSeparator = sv.find("\n\n");
+						size_t offSeparator = sv.find("\r\n\r\n");
 
 						if (offSeparator != std::string_view::npos) {
 							std::string_view requestHeaders = sv.substr(offNext, offSeparator + 1);
-							if(!lastReadHeaderLinePart.append(sv))
+							if (!requestHeader.append(sv))
 								return netknot::OutOfMemoryError::alloc();
-							offNext = offSeparator + 2;
+							offNext = offSeparator + 4;
+
+							if (offNext >= sv.size())
+								return readNext();
+
+							sv = sv.substr(offNext + 1);
 						} else {
-							if (!lastReadHeaderLinePart.append(sv))
+							if (!requestHeader.append(sv))
 								return netknot::OutOfMemoryError::alloc();
 
-							return readNext();
+							std::string_view combinedSv = requestHeader;
+
+							size_t off = combinedSv.find("\r\n\r\n");
+							if (off == std::string_view::npos)
+								return readNext();
 						}
 
-						if (offNext >= realSize)
-							break;
+						if (auto result = parseHttpRequestHeader(); !result.hasValue()) {
+							requestHeaderView = std::move(result.value());
+							result.reset();
+						} else {
+							std::terminate();
+						}
+
+						if (auto it = requestHeaderView.headers.find("Content-Length"); it != requestHeaderView.headers.end()) {
+							size_t contentLength = 0, curDigit;
+
+							for (auto i : it.value()) {
+								if ((i < '0' || i > '9'))
+									std::terminate();
+
+								if (SIZE_MAX / 10 < contentLength)
+									std::terminate();
+								contentLength *= 10;
+
+								curDigit = i - '0';
+								if (SIZE_MAX - curDigit < contentLength)
+									std::terminate();
+								contentLength += curDigit;
+							}
+
+							expectedBodySize = contentLength;
+						}
+
 						parseStatus = HttpParseStatus::Body;
 						[[fallthrough]];
 					}
