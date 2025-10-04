@@ -28,7 +28,6 @@ namespace netknot {
 		AsyncTask *asyncTask;
 		DWORD szOperated;
 		DWORD flags;
-		char addr[];
 	};
 
 	class Win32IOService : public IOService {
@@ -44,7 +43,7 @@ namespace netknot {
 			ExceptionPointer exceptionStorage;
 
 			NETKNOT_FORCEINLINE ThreadLocalData(ThreadLocalData &&) = default;
-			NETKNOT_FORCEINLINE ThreadLocalData(Win32IOService *ioService, size_t threadId, peff::Alloc *allocator) : ioService(ioService), threadId(threadId), currentTasks(allocator), doneTasks(allocator) {
+			NETKNOT_FORCEINLINE ThreadLocalData(Win32IOService *ioService, size_t threadId, peff::Alloc *allocator) : ioService(ioService), threadId(threadId), currentTasks(allocator) {
 			}
 			NETKNOT_API ~ThreadLocalData();
 		};

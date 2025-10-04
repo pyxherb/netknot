@@ -100,6 +100,8 @@ NETKNOT_API Win32IOService::~Win32IOService() {
 
 	DeleteCriticalSection(&threadResortCriticalSection);
 	DeleteCriticalSection(&terminateNotifyCriticalSection);
+
+	WSACleanup();
 }
 
 NETKNOT_API Win32IOService *Win32IOService::alloc(peff::Alloc *selfAllocator) {
@@ -116,8 +118,6 @@ NETKNOT_API void Win32IOService::dealloc() noexcept {
 }
 
 NETKNOT_API ExceptionPointer Win32IOService::run() {
-	sortThreadsByLoad();
-
 	for (auto& i : threadLocalData) {
 		NETKNOT_RETURN_IF_EXCEPT(std::move(i.exceptionStorage));
 	}
@@ -180,9 +180,9 @@ NETKNOT_API ExceptionPointer Win32IOService::createSocket(peff::Alloc *allocator
 	}
 
 	if (socketType == SOCKET_TCP) {
-		s = socket(af, SOCK_STREAM, IPPROTO_TCP);
+		s = WSASocket(af, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
 	} else if (socketType == SOCKET_UDP) {
-		s = socket(af, SOCK_DGRAM, IPPROTO_UDP);
+		s = WSASocket(af, SOCK_DGRAM, IPPROTO_UDP, NULL, 0, WSA_FLAG_OVERLAPPED);
 	} else {
 		std::terminate();
 	}
@@ -208,7 +208,7 @@ NETKNOT_API ExceptionPointer Win32IOService::compileAddress(peff::Alloc *allocat
 				const IPv4Address *addr = (const IPv4Address *)address;
 
 				sa.sin_family = AF_INET;
-				sa.sin_addr.s_addr = ((addr->a << 24) | (addr->b << 16) | (addr->c << 8) | (addr->d));
+				sa.sin_addr.s_addr = ((addr->d << 24) | (addr->c << 16) | (addr->b << 8) | (addr->a));
 				sa.sin_port = htons(addr->port);
 			}
 
@@ -223,6 +223,7 @@ NETKNOT_API ExceptionPointer Win32IOService::compileAddress(peff::Alloc *allocat
 			}
 
 			compiledAddress->size = sizeof(sa);
+			memcpy(compiledAddress->data, &sa, sizeof(sa));
 
 			*compiledAddressOut = compiledAddress.release();
 		}
@@ -280,15 +281,10 @@ NETKNOT_API void Win32IOService::sortThreadsByLoad() {
 }
 
 NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService *&ioServiceOut, const IOServiceCreationParams &params) noexcept {
-	HANDLE iocpCompletionPort;
-
-	if ((iocpCompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0)) == INVALID_HANDLE_VALUE) {
+	WORD ver = MAKEWORD(2, 2);
+	WSADATA wsaData;
+	if (WSAStartup(ver, &wsaData))
 		std::terminate();
-	}
-
-	peff::ScopeGuard closeIocpCompletionPortGuard([iocpCompletionPort]() noexcept {
-		CloseHandle(iocpCompletionPort);
-	});
 
 	std::unique_ptr<Win32IOService, peff::DeallocableDeleter<Win32IOService>> ioService(Win32IOService::alloc(params.allocator.get()));
 
@@ -352,8 +348,11 @@ NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService *&ioServi
 		ioService->szSortedThreadSetBuffer = szBuffer;
 		ioService->alignSortedThreadSetBuffer = alignment;
 
+		bool result;
 		for (size_t i = 0; i < params.nWorkerThreads; ++i) {
-			peff::constructAt<peff::Set<size_t>>(&ioService->sortedThreadIndices.at(i), &ioService->sortedThreadSetAlloc);
+			result = ioService->sortedThreadIndices.insert(+i, { &ioService->sortedThreadSetAlloc });
+			if (!result)
+				std::terminate();
 		}
 	}
 
@@ -361,6 +360,12 @@ NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService *&ioServi
 	InitializeConditionVariable(&ioService->terminateNotifyConditionVar);
 
 	InitializeCriticalSection(&ioService->threadResortCriticalSection);
+
+	if (!((ioService->iocpCompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0)))) {
+		std::terminate();
+	}
+
+	ioService->sortThreadsByLoad();
 
 	ioServiceOut = ioService.release();
 

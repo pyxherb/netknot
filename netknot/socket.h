@@ -132,6 +132,8 @@ namespace netknot {
 		virtual ExceptionPointer onStatusChanged(WriteAsyncTask *task) = 0;
 	};
 
+	class Socket;
+
 	class AcceptAsyncCallback {
 	public:
 		NETKNOT_API AcceptAsyncCallback();

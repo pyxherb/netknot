@@ -5,6 +5,7 @@
 #include <WinSock2.h>
 #include <MSWSock.h>
 #include <peff/advutils/unique_ptr.h>
+#include <peff/base/deallocable.h>
 
 namespace netknot {
 	class Win32Socket;

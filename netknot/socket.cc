@@ -8,7 +8,7 @@ NETKNOT_API CompiledAddress::CompiledAddress() {
 NETKNOT_API CompiledAddress::~CompiledAddress() {
 }
 
-NETKNOT_API AsyncTask::AsyncTask(AsyncTaskType taskType, peff::Alloc *selfAllocator) : _taskType(taskType), _selfAllocator(selfAllocator) {
+NETKNOT_API AsyncTask::AsyncTask(AsyncTaskType taskType) : _taskType(taskType) {
 }
 
 NETKNOT_API AsyncTask::~AsyncTask() {

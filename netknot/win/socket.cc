@@ -100,7 +100,7 @@ NETKNOT_API void Win32Socket::dealloc() noexcept {
 
 NETKNOT_API void Win32Socket::close() {
 	// TODO: Do we actually need to set socket to INVALID_SOCKET to represent if the socket is closed?
-	if (socket == INVALID_SOCKET) {
+	if (socket != INVALID_SOCKET) {
 		closesocket(socket);
 	}
 }
@@ -208,6 +208,7 @@ NETKNOT_API ExceptionPointer Win32Socket::readAsync(peff::Alloc *allocator, cons
 	int result = WSARecv(socket, &overlapped->buf, 1, &overlapped->szOperated, &overlapped->flags, overlapped, NULL);
 
 	if (result) {
+		int errorCode = WSAGetLastError();
 		std::terminate();
 	}
 
@@ -271,10 +272,14 @@ NETKNOT_API ExceptionPointer Win32Socket::acceptAsync(peff::Alloc *allocator, Ac
 	}
 
 	HANDLE hPort = CreateIoCompletionPort(
-		(HANDLE)newSocket->socket,
+		(HANDLE)socket,
 		ioService->iocpCompletionPort,
 		NULL,
 		0);
+
+	if (!hPort) {
+		std::terminate();
+	}
 
 	size_t compiledAddrSize;
 
@@ -290,17 +295,22 @@ NETKNOT_API ExceptionPointer Win32Socket::acceptAsync(peff::Alloc *allocator, Ac
 		return OutOfMemoryError::alloc();
 	}
 
+	memset(overlapped, 0, sizeof(*overlapped));
 	overlapped->addrSize = compiledAddrSize + 16;
+	overlapped->asyncTask = task.get();
 
 	task->overlapped = overlapped;
 
-	if (!AcceptEx(socket, newSocket->socket, overlapped->addr, 0, overlapped->addrSize, overlapped->addrSize, &overlapped->szOperated, overlapped)) {
-		std::terminate();
+	if (!AcceptEx(socket, newSocket->socket, ((char *)overlapped) + sizeof(*overlapped), 0, overlapped->addrSize, overlapped->addrSize, &overlapped->szOperated, overlapped)) {
+		int lastError = WSAGetLastError();
+		if (lastError != WSA_IO_PENDING)
+			std::terminate();
 	}
 
-	NETKNOT_RETURN_IF_EXCEPT(ioService->postAsyncTask(task.get()));
-
+	task->socket = newSocket.release();
 	task->callback = callback;
+
+	NETKNOT_RETURN_IF_EXCEPT(ioService->postAsyncTask(task.get()));
 
 	asyncTaskOut = task.release();
 
