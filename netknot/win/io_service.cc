@@ -23,7 +23,11 @@ NETKNOT_API DWORD WINAPI Win32IOService::_workerThreadProc(LPVOID lpThreadParame
 		ULONG_PTR key;
 		LPOVERLAPPED ov;
 
-		GetQueuedCompletionStatus(tld->ioService->iocpCompletionPort, &szTransferred, &key, &ov, INFINITE);
+		if (!GetQueuedCompletionStatus(tld->ioService->iocpCompletionPort, &szTransferred, &key, &ov, INFINITE))
+			std::terminate();
+
+		if (!key)
+			break;
 
 		Win32IOCPOverlapped *iocpOverlapped = (Win32IOCPOverlapped *)ov;
 
@@ -31,6 +35,7 @@ NETKNOT_API DWORD WINAPI Win32IOService::_workerThreadProc(LPVOID lpThreadParame
 			case AsyncTaskType::Read: {
 				Win32ReadAsyncTask *task = (Win32ReadAsyncTask *)iocpOverlapped->asyncTask;
 
+				task->szRead += szTransferred;
 				task->status = AsyncTaskStatus::Done;
 
 				if ((tld->exceptionStorage = task->callback->onStatusChanged(task))) {
@@ -45,6 +50,7 @@ NETKNOT_API DWORD WINAPI Win32IOService::_workerThreadProc(LPVOID lpThreadParame
 			case AsyncTaskType::Write: {
 				Win32WriteAsyncTask *task = (Win32WriteAsyncTask *)iocpOverlapped->asyncTask;
 
+				task->szWritten += szTransferred;
 				task->status = AsyncTaskStatus::Done;
 
 				if ((tld->exceptionStorage = task->callback->onStatusChanged(task))) {
@@ -70,6 +76,9 @@ NETKNOT_API DWORD WINAPI Win32IOService::_workerThreadProc(LPVOID lpThreadParame
 			}
 		}
 	}
+
+	WakeAllConditionVariable(&tld->ioService->terminateNotifyConditionVar);
+	return 0;
 }
 
 NETKNOT_API Win32IOService::ThreadLocalData::~ThreadLocalData() {
@@ -118,6 +127,9 @@ NETKNOT_API void Win32IOService::dealloc() noexcept {
 }
 
 NETKNOT_API ExceptionPointer Win32IOService::run() {
+	if (_isRunning)
+		std::terminate();
+
 	for (auto& i : threadLocalData) {
 		NETKNOT_RETURN_IF_EXCEPT(std::move(i.exceptionStorage));
 	}
@@ -131,6 +143,29 @@ NETKNOT_API ExceptionPointer Win32IOService::run() {
 	for (auto& i : threadLocalData) {
 		NETKNOT_RETURN_IF_EXCEPT(std::move(i.exceptionStorage));
 	}
+
+	_isRunning = true;
+
+	return {};
+}
+
+NETKNOT_API ExceptionPointer Win32IOService::stop() {
+	if (!_isRunning)
+		std::terminate();
+
+	for (auto &i : threadLocalData) {
+		PostQueuedCompletionStatus(iocpCompletionPort, 0, 0, nullptr);
+	}
+
+	for (auto &i : threadLocalData) {
+		WaitForSingleObject(i.hThread, INFINITE);
+	}
+
+	for (auto &i : threadLocalData) {
+		NETKNOT_RETURN_IF_EXCEPT(std::move(i.exceptionStorage));
+	}
+
+	_isRunning = false;
 
 	return {};
 }
@@ -188,6 +223,15 @@ NETKNOT_API ExceptionPointer Win32IOService::createSocket(peff::Alloc *allocator
 	}
 
 	if (s == INVALID_SOCKET) {
+		std::terminate();
+	}
+
+	HANDLE hPort = CreateIoCompletionPort(
+		(HANDLE)p->socket,
+		iocpCompletionPort,
+		(ULONG_PTR)this,
+		0);
+	if (!hPort) {
 		std::terminate();
 	}
 

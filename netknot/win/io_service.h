@@ -31,6 +31,9 @@ namespace netknot {
 	};
 
 	class Win32IOService : public IOService {
+	private:
+		bool _isRunning = false;
+
 	public:
 		NETKNOT_API static DWORD WINAPI _workerThreadProc(LPVOID lpThreadParameter);
 
@@ -76,6 +79,7 @@ namespace netknot {
 		NETKNOT_API virtual void dealloc() noexcept override;
 
 		NETKNOT_API virtual ExceptionPointer run() override;
+		NETKNOT_API virtual ExceptionPointer stop() override;
 
 		NETKNOT_API virtual ExceptionPointer postAsyncTask(AsyncTask *task) noexcept override;
 
