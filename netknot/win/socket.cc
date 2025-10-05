@@ -187,7 +187,7 @@ NETKNOT_API ExceptionPointer Win32Socket::accept(peff::Alloc *allocator, Socket 
 }
 
 NETKNOT_API ExceptionPointer Win32Socket::readAsync(peff::Alloc *allocator, const RcBufferRef &buffer, ReadAsyncCallback *callback, ReadAsyncTask *&asyncTaskOut) {
-	std::unique_ptr<Win32ReadAsyncTask, AsyncTaskDeleter> task(
+	peff::RcObjectPtr<Win32ReadAsyncTask> task(
 		peff::allocAndConstruct<Win32ReadAsyncTask>(allocator, alignof(Win32ReadAsyncTask), allocator, this, buffer));
 
 	if (!task)
@@ -219,7 +219,8 @@ NETKNOT_API ExceptionPointer Win32Socket::readAsync(peff::Alloc *allocator, cons
 			std::terminate();
 	}
 
-	asyncTaskOut = task.release();
+	task->incRef(peff::acquireGlobalRcObjectPtrCounter());
+	asyncTaskOut = task.get();
 
 	return {};
 }
@@ -257,6 +258,7 @@ NETKNOT_API ExceptionPointer Win32Socket::writeAsync(peff::Alloc *allocator, con
 		std::terminate();
 	}
 
+	task->incRef(peff::acquireGlobalRcObjectPtrCounter());
 	asyncTaskOut = task.release();
 
 	return {};
@@ -311,6 +313,7 @@ NETKNOT_API ExceptionPointer Win32Socket::acceptAsync(peff::Alloc *allocator, Ac
 
 	newSocket.release();
 
+	task->incRef(peff::acquireGlobalRcObjectPtrCounter());
 	asyncTaskOut = task.release();
 
 	return {};

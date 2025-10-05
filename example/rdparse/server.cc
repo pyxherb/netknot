@@ -17,7 +17,7 @@ HttpAcceptAsyncCallback::HttpAcceptAsyncCallback(HttpServer *httpServer, peff::A
 }
 HttpAcceptAsyncCallback::~HttpAcceptAsyncCallback() {
 }
-void HttpAcceptAsyncCallback::dealloc() noexcept {
+void HttpAcceptAsyncCallback::onRefZero() noexcept {
 	peff::destroyAndRelease<HttpAcceptAsyncCallback>(selfAllocator.get(), this, alignof(HttpAcceptAsyncCallback));
 }
 netknot::ExceptionPointer HttpAcceptAsyncCallback::onAccepted(netknot::Socket *socket) noexcept {
@@ -40,10 +40,11 @@ netknot::ExceptionPointer HttpAcceptAsyncCallback::onAccepted(netknot::Socket *s
 	NETKNOT_RETURN_IF_EXCEPT(conn->socket->readAsync(selfAllocator.get(), bufferRef, &conn->requestCallback, task));
 
 	conn.release();
-	/* peff::RcObjectPtr<netknot::AcceptAsyncTask> acceptAsyncTask;
-	if (auto e = socket->acceptAsync(peff::getDefaultAlloc(), this, acceptAsyncTask.getRef()); e) {
+
+	peff::RcObjectPtr<netknot::AcceptAsyncTask> acceptAsyncTask;
+	if (auto e = httpServer->serverSocket->acceptAsync(peff::getDefaultAlloc(), this, acceptAsyncTask.getRef()); e) {
 		return e;
-	}*/
+	}
 
 	return {};
 }
@@ -65,7 +66,7 @@ HttpReadAsyncCallback::HttpReadAsyncCallback(HttpServer *httpServer, Connection 
 HttpReadAsyncCallback::~HttpReadAsyncCallback() {
 }
 
-void HttpReadAsyncCallback::dealloc() noexcept {
+void HttpReadAsyncCallback::onRefZero() noexcept {
 	peff::destroyAndRelease<HttpReadAsyncCallback>(selfAllocator.get(), this, alignof(HttpReadAsyncCallback));
 }
 
@@ -142,8 +143,8 @@ netknot::ExceptionPointer HttpReadAsyncCallback::onStatusChanged(netknot::ReadAs
 			size_t offNext = 0;
 
 			auto readNext = [this, task]() -> netknot::ExceptionPointer {
-				netknot::ReadAsyncTask *taskReceiver;
-				return connection->socket->readAsync(httpServer->allocator.get(), task->getBufferRef(), this, taskReceiver);
+				peff::RcObjectPtr<netknot::ReadAsyncTask> taskReceiver;
+				return connection->socket->readAsync(httpServer->allocator.get(), task->getBufferRef(), this, taskReceiver.getRef());
 			};
 
 			switch (parseStatus) {
@@ -289,7 +290,7 @@ HttpWriteAsyncCallback::HttpWriteAsyncCallback(HttpServer *httpServer, Connectio
 }
 HttpWriteAsyncCallback::~HttpWriteAsyncCallback() {
 }
-void HttpWriteAsyncCallback::dealloc() noexcept {
+void HttpWriteAsyncCallback::onRefZero() noexcept {
 	peff::destroyAndRelease<HttpWriteAsyncCallback>(selfAllocator.get(), this, alignof(HttpWriteAsyncCallback));
 }
 netknot::ExceptionPointer HttpWriteAsyncCallback::onStatusChanged(netknot::WriteAsyncTask *task) noexcept {

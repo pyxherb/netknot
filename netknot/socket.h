@@ -113,21 +113,53 @@ namespace netknot {
 	};
 
 	class ReadAsyncCallback {
+	private:
+		std::atomic_size_t _refCount = 0;
+
 	public:
 		NETKNOT_API ReadAsyncCallback();
 		NETKNOT_API virtual ~ReadAsyncCallback();
 
-		virtual void dealloc() noexcept = 0;
+		virtual void onRefZero() noexcept = 0;
+
+		NETKNOT_FORCEINLINE size_t incRef(size_t globalRc) noexcept {
+			return ++_refCount;
+		}
+
+		NETKNOT_FORCEINLINE size_t decRef(size_t globalRc) noexcept {
+			if (!--_refCount) {
+				onRefZero();
+				return 0;
+			}
+
+			return _refCount;
+		}
 
 		virtual ExceptionPointer onStatusChanged(ReadAsyncTask *task) = 0;
 	};
 
 	class WriteAsyncCallback {
+	private:
+		std::atomic_size_t _refCount = 0;
+
 	public:
 		NETKNOT_API WriteAsyncCallback();
 		NETKNOT_API virtual ~WriteAsyncCallback();
 
-		virtual void dealloc() noexcept = 0;
+		virtual void onRefZero() noexcept = 0;
+
+		NETKNOT_FORCEINLINE size_t incRef(size_t globalRc) noexcept {
+			return ++_refCount;
+		}
+
+		NETKNOT_FORCEINLINE size_t decRef(size_t globalRc) noexcept {
+			if (!--_refCount) {
+				onRefZero();
+				return 0;
+			}
+
+			return _refCount;
+		}
 
 		virtual ExceptionPointer onStatusChanged(WriteAsyncTask *task) = 0;
 	};
@@ -135,11 +167,27 @@ namespace netknot {
 	class Socket;
 
 	class AcceptAsyncCallback {
+	private:
+		std::atomic_size_t _refCount = 0;
+
 	public:
 		NETKNOT_API AcceptAsyncCallback();
 		NETKNOT_API virtual ~AcceptAsyncCallback();
 
-		virtual void dealloc() noexcept = 0;
+		virtual void onRefZero() noexcept = 0;
+
+		NETKNOT_FORCEINLINE size_t incRef(size_t globalRc) noexcept {
+			return ++_refCount;
+		}
+
+		NETKNOT_FORCEINLINE size_t decRef(size_t globalRc) noexcept {
+			if (!--_refCount) {
+				onRefZero();
+				return 0;
+			}
+
+			return _refCount;
+		}
 
 		virtual ExceptionPointer onAccepted(Socket *socket) = 0;
 	};

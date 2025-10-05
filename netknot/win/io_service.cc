@@ -43,7 +43,7 @@ NETKNOT_API DWORD WINAPI Win32IOService::_workerThreadProc(LPVOID lpThreadParame
 					return -1;
 				}
 
-				tld->currentTasks.remove(task);
+				tld->ioService->currentTasks.remove(task);
 
 				break;
 			}
@@ -58,7 +58,7 @@ NETKNOT_API DWORD WINAPI Win32IOService::_workerThreadProc(LPVOID lpThreadParame
 					return -1;
 				}
 
-				tld->currentTasks.remove(task);
+				tld->ioService->currentTasks.remove(task);
 				break;
 			}
 			case AsyncTaskType::Accept: {
@@ -71,7 +71,7 @@ NETKNOT_API DWORD WINAPI Win32IOService::_workerThreadProc(LPVOID lpThreadParame
 					return -1;
 				}
 
-				tld->currentTasks.remove(task);
+				tld->ioService->currentTasks.remove(task);
 				break;
 			}
 		}
@@ -91,23 +91,10 @@ NETKNOT_API Win32IOService::ThreadLocalData::~ThreadLocalData() {
 NETKNOT_API Win32IOService::Win32IOService(peff::Alloc *selfAllocator)
 	: selfAllocator(selfAllocator),
 	  threadLocalData(selfAllocator),
-	  sortedThreadIndicesAlloc(nullptr, 0),
-	  sortedThreadSetAlloc(nullptr, 0),
-	  sortedThreadIndices(selfAllocator) {
+	  currentTasks(selfAllocator) {
 }
 
 NETKNOT_API Win32IOService::~Win32IOService() {
-	sortedThreadIndices.clear();
-	sortedThreadIndices.replaceAllocator(nullptr);
-
-	if (sortedThreadIndicesBuffer) {
-		selfAllocator->release(sortedThreadIndicesBuffer, szSortedThreadIndicesBuffer, alignSortedThreadIndicesBuffer);
-	}
-	if (sortedThreadSetBuffer) {
-		selfAllocator->release(sortedThreadSetBuffer, szSortedThreadSetBuffer, alignSortedThreadSetBuffer);
-	}
-
-	DeleteCriticalSection(&threadResortCriticalSection);
 	DeleteCriticalSection(&terminateNotifyCriticalSection);
 
 	WSACleanup();
@@ -130,7 +117,7 @@ NETKNOT_API ExceptionPointer Win32IOService::run() {
 	if (_isRunning)
 		std::terminate();
 
-	for (auto& i : threadLocalData) {
+	for (auto &i : threadLocalData) {
 		NETKNOT_RETURN_IF_EXCEPT(std::move(i.exceptionStorage));
 	}
 
@@ -140,7 +127,7 @@ NETKNOT_API ExceptionPointer Win32IOService::run() {
 
 	SleepConditionVariableCS(&terminateNotifyConditionVar, &terminateNotifyCriticalSection, INFINITE);
 
-	for (auto& i : threadLocalData) {
+	for (auto &i : threadLocalData) {
 		NETKNOT_RETURN_IF_EXCEPT(std::move(i.exceptionStorage));
 	}
 
@@ -171,27 +158,14 @@ NETKNOT_API ExceptionPointer Win32IOService::stop() {
 }
 
 NETKNOT_API ExceptionPointer Win32IOService::postAsyncTask(AsyncTask *task) noexcept {
-	EnterCriticalSection(&threadResortCriticalSection);
-
-	peff::ScopeGuard leaveCriticalSectionGuard([this]() noexcept {
-		LeaveCriticalSection(&threadResortCriticalSection);
+	peff::ScopeGuard currentTasksCriticalSectionGuard([this]() noexcept {
+		LeaveCriticalSection(&currentTasksCriticalSection);
 	});
 
-	auto &set = sortedThreadIndices.begin().value();
+	EnterCriticalSection(&currentTasksCriticalSection);
 
-	size_t selectedThreadId = *set.begin();
-
-	ThreadLocalData &tld = threadLocalData.at(selectedThreadId);
-
-	size_t load = tld.currentTasks.size();
-	size_t newLoad = load + 1;
-
-	if (!tld.currentTasks.insert(task))
+	if (!currentTasks.insert(task))
 		return OutOfMemoryError::alloc();
-
-	set.remove(+selectedThreadId);
-
-	addIntoOrInsertNewSortedThreadGroup(newLoad, selectedThreadId);
 
 	return {};
 }
@@ -299,31 +273,6 @@ ExceptionPointer Win32IOService::decompileAddress(peff::Alloc *allocator, const 
 	std::terminate();
 }
 
-NETKNOT_API void Win32IOService::addIntoOrInsertNewSortedThreadGroup(size_t load, size_t index) {
-	if (auto it = sortedThreadIndices.find(load); it != sortedThreadIndices.end()) {
-		if (!it.value().insert(+index))
-			std::terminate();
-	} else {
-		peff::Set<size_t> groupSet(&sortedThreadIndicesAlloc);
-
-		if (!groupSet.insert(+index))
-			std::terminate();
-
-		if (!sortedThreadIndices.insert(+load, std::move(groupSet)))
-			std::terminate();
-	}
-}
-
-NETKNOT_API void Win32IOService::sortThreadsByLoad() {
-	sortedThreadIndices.clear();
-
-	for (size_t i = 0; i < threadLocalData.size(); ++i) {
-		auto &tld = threadLocalData.at(i);
-
-		addIntoOrInsertNewSortedThreadGroup(tld.currentTasks.size(), i);
-	}
-}
-
 NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService *&ioServiceOut, const IOServiceCreationParams &params) noexcept {
 	WORD ver = MAKEWORD(2, 2);
 	WSADATA wsaData;
@@ -355,61 +304,14 @@ NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService *&ioServi
 		tld.hThread = hThread;
 	}
 
-	{
-		const size_t szBuffer = (peff::BufferAlloc::calcAllocSize(
-						 sizeof(peff::Map<size_t, peff::Set<size_t>>::NodeType),
-						 alignof(std::max_align_t)))*params.nWorkerThreads,
-					 alignment = alignof(std::max_align_t);
-
-		if (!(ioService->sortedThreadIndicesBuffer = (char *)params.allocator->alloc(
-				  szBuffer,
-				  alignment))) {
-			return OutOfMemoryError::alloc();
-		}
-
-		ioService->sortedThreadIndicesAlloc = peff::BufferAlloc(ioService->sortedThreadIndicesBuffer, szBuffer);
-
-		ioService->szSortedThreadIndicesBuffer = szBuffer;
-		ioService->alignSortedThreadIndicesBuffer = alignment;
-
-		ioService->sortedThreadIndices.replaceAllocator(&ioService->sortedThreadIndicesAlloc);
-	}
-
-	{
-		const size_t szBuffer = (peff::BufferAlloc::calcAllocSize(
-						 sizeof(peff::Set<size_t>::NodeType),
-						 alignof(std::max_align_t)))*params.nWorkerThreads,
-					 alignment = alignof(std::max_align_t);
-
-		if (!(ioService->sortedThreadSetBuffer = (char *)params.allocator->alloc(
-				  szBuffer,
-				  alignment))) {
-			return OutOfMemoryError::alloc();
-		}
-
-		ioService->sortedThreadSetAlloc = peff::BufferAlloc(ioService->sortedThreadSetBuffer, szBuffer);
-
-		ioService->szSortedThreadSetBuffer = szBuffer;
-		ioService->alignSortedThreadSetBuffer = alignment;
-
-		bool result;
-		for (size_t i = 0; i < params.nWorkerThreads; ++i) {
-			result = ioService->sortedThreadIndices.insert(+i, { &ioService->sortedThreadSetAlloc });
-			if (!result)
-				std::terminate();
-		}
-	}
-
 	InitializeCriticalSection(&ioService->terminateNotifyCriticalSection);
 	InitializeConditionVariable(&ioService->terminateNotifyConditionVar);
 
-	InitializeCriticalSection(&ioService->threadResortCriticalSection);
+	InitializeCriticalSection(&ioService->currentTasksCriticalSection);
 
 	if (!((ioService->iocpCompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0)))) {
 		std::terminate();
 	}
-
-	ioService->sortThreadsByLoad();
 
 	ioServiceOut = ioService.release();
 

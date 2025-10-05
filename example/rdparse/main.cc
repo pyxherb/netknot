@@ -37,11 +37,15 @@ int main() {
 			std::terminate();
 		}
 
-		http::HttpServer httpServer(peff::getDefaultAlloc());
+		http::HttpServer httpServer(peff::getDefaultAlloc(), socket.release());
 
-		http::HttpAcceptAsyncCallback callback(&httpServer, peff::getDefaultAlloc());
+		peff::RcObjectPtr<http::HttpAcceptAsyncCallback> callback;
+
+		if (!(callback = peff::allocAndConstruct<http::HttpAcceptAsyncCallback>(peff::getDefaultAlloc(), alignof(http::HttpAcceptAsyncCallback), & httpServer, peff::getDefaultAlloc())))
+			std::terminate();
+
 		peff::RcObjectPtr<netknot::AcceptAsyncTask> acceptAsyncTask;
-		if ((e = socket->acceptAsync(peff::getDefaultAlloc(), &callback, acceptAsyncTask.getRef()))) {
+		if ((e = httpServer.serverSocket->acceptAsync(peff::getDefaultAlloc(), callback.get(), acceptAsyncTask.getRef()))) {
 			std::terminate();
 		}
 

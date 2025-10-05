@@ -21,7 +21,7 @@ namespace netknot {
 		size_t szRead = 0;
 		ExceptionPointer exceptPtr;
 		Win32IOCPOverlapped *overlapped = nullptr;
-		peff::UniquePtr<ReadAsyncCallback, peff::DeallocableDeleter<ReadAsyncCallback>> callback;
+		peff::RcObjectPtr<ReadAsyncCallback> callback;
 
 		NETKNOT_API Win32ReadAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const RcBufferRef &bufferRef);
 		NETKNOT_API virtual ~Win32ReadAsyncTask();
@@ -47,7 +47,7 @@ namespace netknot {
 		size_t szWritten = 0;
 		ExceptionPointer exceptPtr;
 		Win32IOCPOverlapped *overlapped = nullptr;
-		peff::UniquePtr<WriteAsyncCallback, peff::DeallocableDeleter<WriteAsyncCallback>> callback;
+		peff::RcObjectPtr<WriteAsyncCallback> callback;
 
 		NETKNOT_API Win32WriteAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const RcBufferRef &bufferRef);
 		NETKNOT_API virtual ~Win32WriteAsyncTask();
@@ -69,7 +69,7 @@ namespace netknot {
 		peff::UUID addressFamily;
 		ExceptionPointer exceptPtr;
 		Win32IOCPOverlapped *overlapped = nullptr;
-		peff::UniquePtr<AcceptAsyncCallback, peff::DeallocableDeleter<AcceptAsyncCallback>> callback;
+		peff::RcObjectPtr<AcceptAsyncCallback> callback;
 
 		NETKNOT_API Win32AcceptAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const peff::UUID &addressFamily);
 		NETKNOT_API virtual ~Win32AcceptAsyncTask();

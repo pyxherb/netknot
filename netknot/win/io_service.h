@@ -41,12 +41,11 @@ namespace netknot {
 			Win32IOService *ioService;
 			HANDLE hThread = INVALID_HANDLE_VALUE;
 			size_t threadId;
-			peff::Set<peff::RcObjectPtr<AsyncTask>> currentTasks;
 			bool terminate = false;
 			ExceptionPointer exceptionStorage;
 
 			NETKNOT_FORCEINLINE ThreadLocalData(ThreadLocalData &&) = default;
-			NETKNOT_FORCEINLINE ThreadLocalData(Win32IOService *ioService, size_t threadId, peff::Alloc *allocator) : ioService(ioService), threadId(threadId), currentTasks(allocator) {
+			NETKNOT_FORCEINLINE ThreadLocalData(Win32IOService *ioService, size_t threadId, peff::Alloc *allocator) : ioService(ioService), threadId(threadId) {
 			}
 			NETKNOT_API ~ThreadLocalData();
 		};
@@ -54,22 +53,13 @@ namespace netknot {
 		CRITICAL_SECTION terminateNotifyCriticalSection;
 		CONDITION_VARIABLE terminateNotifyConditionVar;
 
+		CRITICAL_SECTION currentTasksCriticalSection;
+		peff::Set<peff::RcObjectPtr<AsyncTask>> currentTasks;
+
 		peff::RcObjectPtr<peff::Alloc> selfAllocator;
 		HANDLE iocpCompletionPort = INVALID_HANDLE_VALUE;
 
 		peff::DynArray<ThreadLocalData> threadLocalData;
-		size_t nCurrentTasksOfMostFreeThread;
-
-		size_t szSortedThreadIndicesBuffer = 0, alignSortedThreadIndicesBuffer = 0;
-		char *sortedThreadIndicesBuffer = nullptr;
-		peff::BufferAlloc sortedThreadIndicesAlloc;
-
-		size_t szSortedThreadSetBuffer = 0, alignSortedThreadSetBuffer = 0;
-		char *sortedThreadSetBuffer = nullptr;
-		peff::BufferAlloc sortedThreadSetAlloc;
-
-		peff::Map<size_t, peff::Set<size_t>> sortedThreadIndices;
-		CRITICAL_SECTION threadResortCriticalSection;
 
 		NETKNOT_API Win32IOService(peff::Alloc *selfAllocator);
 		NETKNOT_API ~Win32IOService();
@@ -87,9 +77,6 @@ namespace netknot {
 
 		NETKNOT_API virtual ExceptionPointer compileAddress(peff::Alloc *allocator, const Address *address, CompiledAddress **compiledAddressOut, size_t *compiledAddressSizeOut = nullptr) noexcept override;
 		NETKNOT_API virtual ExceptionPointer decompileAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const CompiledAddress *address, Address &addressOut) noexcept override;
-
-		NETKNOT_API void addIntoOrInsertNewSortedThreadGroup(size_t load, size_t index);
-		NETKNOT_API void sortThreadsByLoad();
 	};
 }
 

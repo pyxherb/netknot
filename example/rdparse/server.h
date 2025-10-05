@@ -39,7 +39,7 @@ namespace http {
 
 		virtual ~HttpAcceptAsyncCallback();
 
-		virtual void dealloc() noexcept override;
+		virtual void onRefZero() noexcept override;
 
 		virtual netknot::ExceptionPointer onAccepted(netknot::Socket *socket) noexcept override;
 	};
@@ -79,7 +79,7 @@ namespace http {
 
 		virtual ~HttpReadAsyncCallback();
 
-		void dealloc() noexcept override;
+		void onRefZero() noexcept override;
 
 		static peff::Option<HttpRequestLineView> parseHttpRequestLine(std::string_view requestLine);
 
@@ -98,7 +98,7 @@ namespace http {
 
 		virtual ~HttpWriteAsyncCallback();
 
-		virtual void dealloc() noexcept override;
+		virtual void onRefZero() noexcept override;
 
 		virtual netknot::ExceptionPointer onStatusChanged(netknot::WriteAsyncTask *task) noexcept override;
 	};
@@ -122,9 +122,10 @@ namespace http {
 	class HttpServer {
 	public:
 		peff::RcObjectPtr<peff::Alloc> allocator;
+		peff::UniquePtr<netknot::Socket, peff::DeallocableDeleter<netknot::Socket>> serverSocket;
 		peff::Set<peff::UniquePtr<Connection, peff::DeallocableDeleter<Connection>>> connections;
 
-		HttpServer(peff::Alloc *allocator) : allocator(allocator), connections(allocator) {}
+		HttpServer(peff::Alloc *allocator, netknot::Socket *serverSocket) : allocator(allocator), connections(allocator), serverSocket(serverSocket) {}
 
 		[[nodiscard]] bool addConnection(Connection *conn) noexcept {
 			if (!connections.insert({ conn }))
