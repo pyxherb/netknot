@@ -29,6 +29,8 @@ set_target_properties(netknot_static PROPERTIES
 
 if(WIN32)
     add_subdirectory("win")
+elseif(UNIX)
+    add_subdirectory("unix")
 endif()
 
 install(TARGETS netknot netknot_static
