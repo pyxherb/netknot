@@ -99,8 +99,8 @@ NETKNOT_API void UnixSocket::close() {
 	}
 }
 
-NETKNOT_API ExceptionPointer UnixSocket::bind(const CompiledAddress *address) {
-	const UnixCompiledAddress *addr = (const UnixCompiledAddress *)address;
+NETKNOT_API ExceptionPointer UnixSocket::bind(const TranslatedAddress *address) {
+	const UnixTranslatedAddress *addr = (const UnixTranslatedAddress *)address;
 
 	int result = ::bind(socket, (const sockaddr *)addr->data, addr->size);
 
@@ -123,8 +123,8 @@ NETKNOT_API ExceptionPointer UnixSocket::listen(size_t backlog) {
 	return {};
 }
 
-NETKNOT_API ExceptionPointer UnixSocket::connect(const CompiledAddress *address) {
-	const UnixCompiledAddress *addr = (const UnixCompiledAddress *)address;
+NETKNOT_API ExceptionPointer UnixSocket::connect(const TranslatedAddress *address) {
+	const UnixTranslatedAddress *addr = (const UnixTranslatedAddress *)address;
 
 	int result = ::connect(socket, (const sockaddr *)addr->data, addr->size);
 
@@ -241,7 +241,7 @@ NETKNOT_API ExceptionPointer UnixSocket::acceptAsync(peff::Alloc *allocator, Acc
 	{
 		Address addr(addressFamily);
 
-		ioService->compileAddress(nullptr, &addr, nullptr, &compiledAddrSize).unwrap();
+		ioService->translateAddress(nullptr, &addr, nullptr, &compiledAddrSize).unwrap();
 	}
 
 	// TODO: Implement it.

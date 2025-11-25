@@ -2,17 +2,17 @@
 
 using namespace netknot;
 
-NETKNOT_API UnixCompiledAddress::UnixCompiledAddress(peff::Alloc *selfAllocator) : selfAllocator(selfAllocator) {
+NETKNOT_API UnixTranslatedAddress::UnixTranslatedAddress(peff::Alloc *selfAllocator) : selfAllocator(selfAllocator) {
 }
 
-NETKNOT_API UnixCompiledAddress::~UnixCompiledAddress() {
+NETKNOT_API UnixTranslatedAddress::~UnixTranslatedAddress() {
 	if (data) {
 		selfAllocator->release(data, size, 1);
 	}
 }
 
-NETKNOT_API void UnixCompiledAddress::dealloc() noexcept {
-	peff::destroyAndRelease<UnixCompiledAddress>(selfAllocator.get(), this, alignof(UnixCompiledAddress));
+NETKNOT_API void UnixTranslatedAddress::dealloc() noexcept {
+	peff::destroyAndRelease<UnixTranslatedAddress>(selfAllocator.get(), this, alignof(UnixTranslatedAddress));
 }
 
 NETKNOT_API void *UnixIOService::_workerThreadProc(void *lpThreadParameter) {
@@ -149,7 +149,7 @@ NETKNOT_API ExceptionPointer UnixIOService::createSocket(peff::Alloc *allocator,
 	return {};
 }
 
-NETKNOT_API ExceptionPointer UnixIOService::compileAddress(peff::Alloc *allocator, const Address *address, CompiledAddress **compiledAddressOut, size_t *compiledAddressSizeOut) noexcept {
+NETKNOT_API ExceptionPointer UnixIOService::translateAddress(peff::Alloc *allocator, const Address *address, TranslatedAddress **compiledAddressOut, size_t *compiledAddressSizeOut) noexcept {
 	if (address->addressFamily == ADDRFAM_IPV4) {
 		sockaddr_in sa = { 0 };
 
@@ -165,8 +165,8 @@ NETKNOT_API ExceptionPointer UnixIOService::compileAddress(peff::Alloc *allocato
 				sa.sin_port = htons(addr->port);
 			}
 
-			std::unique_ptr<UnixCompiledAddress, peff::DeallocableDeleter<UnixCompiledAddress>>
-				compiledAddress(peff::allocAndConstruct<UnixCompiledAddress>(allocator, alignof(UnixCompiledAddress), allocator));
+			std::unique_ptr<UnixTranslatedAddress, peff::DeallocableDeleter<UnixTranslatedAddress>>
+				compiledAddress(peff::allocAndConstruct<UnixTranslatedAddress>(allocator, alignof(UnixTranslatedAddress), allocator));
 
 			if (!compiledAddress)
 				return OutOfMemoryError::alloc();
@@ -188,9 +188,9 @@ NETKNOT_API ExceptionPointer UnixIOService::compileAddress(peff::Alloc *allocato
 	std::terminate();
 }
 
-ExceptionPointer UnixIOService::decompileAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const CompiledAddress *address, Address &addressOut) noexcept {
+ExceptionPointer UnixIOService::detranslateAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const TranslatedAddress *address, Address &addressOut) noexcept {
 	if (addressFamily == ADDRFAM_IPV4) {
-		sockaddr_in *sa = (sockaddr_in *)((UnixCompiledAddress *)address)->data;
+		sockaddr_in *sa = (sockaddr_in *)((UnixTranslatedAddress *)address)->data;
 
 		IPv4Address &ipv4Address = (IPv4Address &)addressOut;
 

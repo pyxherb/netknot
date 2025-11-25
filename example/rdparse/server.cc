@@ -13,6 +13,15 @@ Connection *Connection::alloc(peff::Alloc *allocator, HttpServer *httpServer, ne
 	return peff::allocAndConstruct<Connection>(allocator, alignof(Connection), allocator, httpServer, socket);
 }
 
+HttpRequestHandler::HttpRequestHandler() {}
+HttpRequestHandler::~HttpRequestHandler() {}
+
+HttpRequestHandlerRegistry::HttpRequestHandlerRegistry(peff::Alloc *allocator): allocator(allocator), url(allocator) {
+}
+
+HttpRequestHandlerRegistry::~HttpRequestHandlerRegistry() {
+}
+
 HttpAcceptAsyncCallback::HttpAcceptAsyncCallback(HttpServer *httpServer, peff::Alloc *selfAllocator) : httpServer(httpServer), selfAllocator(selfAllocator) {
 }
 HttpAcceptAsyncCallback::~HttpAcceptAsyncCallback() {
@@ -264,7 +273,7 @@ netknot::ExceptionPointer HttpReadAsyncCallback::onStatusChanged(netknot::ReadAs
 							"Content-Length: 13\r\n"
 							"\r\n"
 							"Hello, World!";
-						EmplaceBuffer rb((char*)response.data(), response.size());
+						EmplaceBuffer rb((char *)response.data(), response.size());
 						netknot::RcBufferRef bufferRef(&*(responseBuffer = peff::Option<EmplaceBuffer>(std::move(rb))));
 
 						netknot::WriteAsyncTask *task;
@@ -304,6 +313,27 @@ netknot::ExceptionPointer HttpWriteAsyncCallback::onStatusChanged(netknot::Write
 		default:
 			break;
 	}
+
+	return {};
+}
+
+netknot::ExceptionPointer HttpServer::_reserveHandlerRegistry(const std::string_view& name) {
+	HttpRequestHandlerRegistry registry(allocator.get());
+
+	if (!registry.url.build(name))
+		return netknot::OutOfMemoryError::alloc();
+}
+
+HttpServer::HttpServer(peff::Alloc *allocator, netknot::Socket *serverSocket) : allocator(allocator), connections(allocator), serverSocket(serverSocket), handlerRegistries(allocator) {}
+
+[[nodiscard]] bool HttpServer::addConnection(Connection *conn) noexcept {
+	if (!connections.insert({ conn }))
+		return false;
+	return true;
+}
+
+netknot::ExceptionPointer HttpServer::registerGetHandler(const std::string_view &name, HttpRequestHandler *handler) {
+	peff::UniquePtr<HttpRequestHandler, peff::DeallocableDeleter<HttpRequestHandler>> handlerPtr(handler);
 
 	return {};
 }

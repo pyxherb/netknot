@@ -4,7 +4,7 @@ file(GLOB HEADERS *.h)
 file(GLOB SRC *.cc)
 
 add_library(netknot SHARED)
-target_compile_definitions(netknot PRIVATE IS_NETKNOT_BASE_BUILDING=1)
+target_compile_definitions(netknot PRIVATE IS_NETKNOT_BUILDING=1)
 set_target_properties(netknot PROPERTIES CXX_STANDARD 17)
 target_sources(netknot PRIVATE ${HEADERS} ${SRC})
 target_include_directories(netknot PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/> $<INSTALL_INTERFACE:include/>)
@@ -17,7 +17,8 @@ set_target_properties(netknot PROPERTIES
 )
 
 add_library(netknot_static STATIC)
-target_compile_definitions(netknot_static PRIVATE NETKNOT_STATIC_LINK=1 IS_NETKNOT_BASE_BUILDING=1)
+target_compile_definitions(netknot_static PRIVATE IS_NETKNOT_BUILDING=1)
+target_compile_definitions(netknot_static PUBLIC NETKNOT_STATIC_LINK=1)
 set_target_properties(netknot_static PROPERTIES CXX_STANDARD 17)
 target_sources(netknot_static PRIVATE ${HEADERS} ${SRC})
 target_link_libraries(netknot_static PUBLIC peff_base_static peff_utils_static peff_containers_static)

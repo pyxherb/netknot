@@ -27,10 +27,10 @@ namespace netknot {
 		NETKNOT_FORCEINLINE IPv4Address(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint16_t port) : Address(ADDRFAM_IPV4), a(a), b(b), c(c), d(d), port(port) {}
 	};
 
-	class CompiledAddress {
+	class TranslatedAddress {
 	public:
-		NETKNOT_API CompiledAddress();
-		NETKNOT_API virtual ~CompiledAddress();
+		NETKNOT_API TranslatedAddress();
+		NETKNOT_API virtual ~TranslatedAddress();
 
 		virtual void dealloc() = 0;
 	};
@@ -81,7 +81,7 @@ namespace netknot {
 	};
 
 	struct AsyncTaskDeleter {
-		NETKNOT_FORCEINLINE void operator()(AsyncTask* task) const noexcept {
+		NETKNOT_FORCEINLINE void operator()(AsyncTask *task) const noexcept {
 			task->onRefZero();
 		}
 	};
@@ -192,6 +192,69 @@ namespace netknot {
 		virtual ExceptionPointer onAccepted(Socket *socket) = 0;
 	};
 
+	template <typename Callback>
+	class HeapFnReadAsyncCallback final : public ReadAsyncCallback {
+	private:
+		peff::Alloc *_allocator;
+		Callback _callback;
+
+	public:
+		static_assert(std::is_invocable_v<Callback, ReadAsyncTask *>, "The callback is malformed");
+
+		NETKNOT_FORCEINLINE HeapFnReadAsyncCallback(peff::Alloc *allocator, Callback &&callback) : _allocator(allocator), _callback(callback) {}
+		virtual inline ~HeapFnReadAsyncCallback() {}
+
+		virtual void onRefZero() noexcept {
+			peff::destroyAndRelease<decltype(*this)>(_allocator, this, alignof(decltype(*this)));
+		}
+
+		virtual ExceptionPointer onStatusChanged(ReadAsyncTask* task) override {
+			return _callback(task);
+		}
+	};
+
+	template <typename Callback>
+	class HeapFnWriteAsyncCallback final : public WriteAsyncCallback {
+	private:
+		peff::Alloc *_allocator;
+		Callback _callback;
+
+	public:
+		static_assert(std::is_invocable_v<Callback, WriteAsyncTask *>, "The callback is malformed");
+
+		NETKNOT_FORCEINLINE HeapFnWriteAsyncCallback(peff::Alloc *allocator, Callback &&callback) : _allocator(allocator), _callback(callback) {}
+		virtual inline ~HeapFnWriteAsyncCallback() {}
+
+		virtual void onRefZero() noexcept {
+			peff::destroyAndRelease<decltype(*this)>(_allocator, this, alignof(decltype(*this)));
+		}
+
+		virtual ExceptionPointer onStatusChanged(WriteAsyncTask *task) override {
+			return _callback(task);
+		}
+	};
+
+	template <typename Callback>
+	class HeapFnAcceptAsyncCallback final : public AcceptAsyncCallback {
+	private:
+		peff::Alloc *_allocator;
+		Callback _callback;
+
+	public:
+		static_assert(std::is_invocable_v<Callback, Socket *>, "The callback is malformed");
+
+		NETKNOT_FORCEINLINE HeapFnAcceptAsyncCallback(peff::Alloc *allocator, Callback &&callback) : _allocator(allocator), _callback(callback) {}
+		virtual inline ~HeapFnAcceptAsyncCallback() {}
+
+		virtual void onRefZero() noexcept {
+			peff::destroyAndRelease<decltype(*this)>(_allocator, this, alignof(decltype(*this)));
+		}
+
+		virtual ExceptionPointer onAccepted(Socket *socket) override {
+			return _callback(socket);
+		}
+	};
+
 	class Socket {
 	public:
 		NETKNOT_API Socket();
@@ -201,9 +264,9 @@ namespace netknot {
 
 		virtual void close() = 0;
 
-		virtual ExceptionPointer bind(const CompiledAddress *address) = 0;
+		virtual ExceptionPointer bind(const TranslatedAddress *address) = 0;
 		virtual ExceptionPointer listen(size_t backlog) = 0;
-		virtual ExceptionPointer connect(const CompiledAddress *address) = 0;
+		virtual ExceptionPointer connect(const TranslatedAddress *address) = 0;
 
 		virtual ExceptionPointer read(char *buffer, size_t size, size_t &szReadOut) = 0;
 		virtual ExceptionPointer write(const char *buffer, size_t size, size_t &szWrittenOut) = 0;

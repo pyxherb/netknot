@@ -11,14 +11,14 @@
 #include <poll.h>
 
 namespace netknot {
-	class UnixCompiledAddress : public CompiledAddress {
+	class UnixTranslatedAddress : public TranslatedAddress {
 	public:
 		peff::RcObjectPtr<peff::Alloc> selfAllocator;
 		char *data = nullptr;
 		size_t size = 0;
 
-		NETKNOT_API UnixCompiledAddress(peff::Alloc *selfAllocator);
-		NETKNOT_API virtual ~UnixCompiledAddress();
+		NETKNOT_API UnixTranslatedAddress(peff::Alloc *selfAllocator);
+		NETKNOT_API virtual ~UnixTranslatedAddress();
 
 		NETKNOT_API virtual void dealloc() noexcept override;
 	};
@@ -69,8 +69,8 @@ namespace netknot {
 
 		NETKNOT_API virtual ExceptionPointer createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType, Socket *&socketOut) noexcept override;
 
-		NETKNOT_API virtual ExceptionPointer compileAddress(peff::Alloc *allocator, const Address *address, CompiledAddress **compiledAddressOut, size_t *compiledAddressSizeOut = nullptr) noexcept override;
-		NETKNOT_API virtual ExceptionPointer decompileAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const CompiledAddress *address, Address &addressOut) noexcept override;
+		NETKNOT_API virtual ExceptionPointer translateAddress(peff::Alloc *allocator, const Address *address, TranslatedAddress **compiledAddressOut, size_t *compiledAddressSizeOut = nullptr) noexcept override;
+		NETKNOT_API virtual ExceptionPointer detranslateAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const TranslatedAddress *address, Address &addressOut) noexcept override;
 	};
 }
 

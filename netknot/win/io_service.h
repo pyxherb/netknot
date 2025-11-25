@@ -10,14 +10,14 @@
 #include <Windows.h>
 
 namespace netknot {
-	class Win32CompiledAddress : public CompiledAddress {
+	class Win32TranslatedAddress : public TranslatedAddress {
 	public:
 		peff::RcObjectPtr<peff::Alloc> selfAllocator;
 		char *data = nullptr;
 		size_t size = 0;
 
-		NETKNOT_API Win32CompiledAddress(peff::Alloc *selfAllocator);
-		NETKNOT_API virtual ~Win32CompiledAddress();
+		NETKNOT_API Win32TranslatedAddress(peff::Alloc *selfAllocator);
+		NETKNOT_API virtual ~Win32TranslatedAddress();
 
 		NETKNOT_API virtual void dealloc() noexcept override;
 	};
@@ -75,9 +75,11 @@ namespace netknot {
 
 		NETKNOT_API virtual ExceptionPointer createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType, Socket *&socketOut) noexcept override;
 
-		NETKNOT_API virtual ExceptionPointer compileAddress(peff::Alloc *allocator, const Address *address, CompiledAddress **compiledAddressOut, size_t *compiledAddressSizeOut = nullptr) noexcept override;
-		NETKNOT_API virtual ExceptionPointer decompileAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const CompiledAddress *address, Address &addressOut) noexcept override;
+		NETKNOT_API virtual ExceptionPointer translateAddress(peff::Alloc *allocator, const Address *address, TranslatedAddress **compiledAddressOut, size_t *compiledAddressSizeOut = nullptr) noexcept override;
+		NETKNOT_API virtual ExceptionPointer detranslateAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const TranslatedAddress *address, Address &addressOut) noexcept override;
 	};
+
+	NETKNOT_API ExceptionPointer createIOCPIOService(IOService *&ioServiceOut, const IOServiceCreationParams &params) noexcept;
 }
 
 #endif

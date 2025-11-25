@@ -13,11 +13,11 @@ int main() {
 			}
 		}
 
-		peff::UniquePtr<netknot::CompiledAddress, peff::DeallocableDeleter<netknot::CompiledAddress>> compiledAddr;
+		peff::UniquePtr<netknot::TranslatedAddress, peff::DeallocableDeleter<netknot::TranslatedAddress>> compiledAddr;
 		{
 			netknot::IPv4Address addr(0, 0, 0, 0, 8080);
 
-			if ((e = ioService->compileAddress(peff::getDefaultAlloc(), &addr, compiledAddr.getAddressOf()))) {
+			if ((e = ioService->translateAddress(peff::getDefaultAlloc(), &addr, compiledAddr.getAddressOf()))) {
 				std::terminate();
 			}
 		}

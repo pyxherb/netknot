@@ -2,10 +2,10 @@
 
 using namespace netknot;
 
-NETKNOT_API CompiledAddress::CompiledAddress() {
+NETKNOT_API TranslatedAddress::TranslatedAddress() {
 }
 
-NETKNOT_API CompiledAddress::~CompiledAddress() {
+NETKNOT_API TranslatedAddress::~TranslatedAddress() {
 }
 
 NETKNOT_API AsyncTask::AsyncTask(AsyncTaskType taskType) : _taskType(taskType) {

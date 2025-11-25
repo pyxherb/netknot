@@ -2,17 +2,17 @@
 
 using namespace netknot;
 
-NETKNOT_API Win32CompiledAddress::Win32CompiledAddress(peff::Alloc *selfAllocator) : selfAllocator(selfAllocator) {
+NETKNOT_API Win32TranslatedAddress::Win32TranslatedAddress(peff::Alloc *selfAllocator) : selfAllocator(selfAllocator) {
 }
 
-NETKNOT_API Win32CompiledAddress::~Win32CompiledAddress() {
+NETKNOT_API Win32TranslatedAddress::~Win32TranslatedAddress() {
 	if (data) {
 		selfAllocator->release(data, size, 1);
 	}
 }
 
-NETKNOT_API void Win32CompiledAddress::dealloc() noexcept {
-	peff::destroyAndRelease<Win32CompiledAddress>(selfAllocator.get(), this, alignof(Win32CompiledAddress));
+NETKNOT_API void Win32TranslatedAddress::dealloc() noexcept {
+	peff::destroyAndRelease<Win32TranslatedAddress>(selfAllocator.get(), this, alignof(Win32TranslatedAddress));
 }
 
 NETKNOT_API DWORD WINAPI Win32IOService::_workerThreadProc(LPVOID lpThreadParameter) {
@@ -214,7 +214,7 @@ NETKNOT_API ExceptionPointer Win32IOService::createSocket(peff::Alloc *allocator
 	return {};
 }
 
-NETKNOT_API ExceptionPointer Win32IOService::compileAddress(peff::Alloc *allocator, const Address *address, CompiledAddress **compiledAddressOut, size_t *compiledAddressSizeOut) noexcept {
+NETKNOT_API ExceptionPointer Win32IOService::translateAddress(peff::Alloc *allocator, const Address *address, TranslatedAddress **compiledAddressOut, size_t *compiledAddressSizeOut) noexcept {
 	if (address->addressFamily == ADDRFAM_IPV4) {
 		SOCKADDR_IN sa = { 0 };
 
@@ -230,8 +230,8 @@ NETKNOT_API ExceptionPointer Win32IOService::compileAddress(peff::Alloc *allocat
 				sa.sin_port = htons(addr->port);
 			}
 
-			std::unique_ptr<Win32CompiledAddress, peff::DeallocableDeleter<Win32CompiledAddress>>
-				compiledAddress(peff::allocAndConstruct<Win32CompiledAddress>(allocator, alignof(Win32CompiledAddress), allocator));
+			std::unique_ptr<Win32TranslatedAddress, peff::DeallocableDeleter<Win32TranslatedAddress>>
+				compiledAddress(peff::allocAndConstruct<Win32TranslatedAddress>(allocator, alignof(Win32TranslatedAddress), allocator));
 
 			if (!compiledAddress)
 				return OutOfMemoryError::alloc();
@@ -253,9 +253,9 @@ NETKNOT_API ExceptionPointer Win32IOService::compileAddress(peff::Alloc *allocat
 	std::terminate();
 }
 
-ExceptionPointer Win32IOService::decompileAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const CompiledAddress *address, Address &addressOut) noexcept {
+ExceptionPointer Win32IOService::detranslateAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const TranslatedAddress *address, Address &addressOut) noexcept {
 	if (addressFamily == ADDRFAM_IPV4) {
-		sockaddr_in *sa = (sockaddr_in *)((Win32CompiledAddress *)address)->data;
+		sockaddr_in *sa = (sockaddr_in *)((Win32TranslatedAddress *)address)->data;
 
 		IPv4Address &ipv4Address = (IPv4Address &)addressOut;
 
@@ -273,7 +273,7 @@ ExceptionPointer Win32IOService::decompileAddress(peff::Alloc *allocator, const 
 	std::terminate();
 }
 
-NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService *&ioServiceOut, const IOServiceCreationParams &params) noexcept {
+NETKNOT_API ExceptionPointer netknot::createIOCPIOService(IOService *&ioServiceOut, const IOServiceCreationParams &params) noexcept {
 	WORD ver = MAKEWORD(2, 2);
 	WSADATA wsaData;
 	if (WSAStartup(ver, &wsaData))
@@ -316,4 +316,8 @@ NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService *&ioServi
 	ioServiceOut = ioService.release();
 
 	return {};
+}
+
+NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService*& ioServiceOut, const IOServiceCreationParams& params) noexcept {
+	return createIOCPIOService(ioServiceOut, params);
 }

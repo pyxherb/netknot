@@ -105,8 +105,8 @@ NETKNOT_API void Win32Socket::close() {
 	}
 }
 
-NETKNOT_API ExceptionPointer Win32Socket::bind(const CompiledAddress *address) {
-	const Win32CompiledAddress *addr = (const Win32CompiledAddress *)address;
+NETKNOT_API ExceptionPointer Win32Socket::bind(const TranslatedAddress *address) {
+	const Win32TranslatedAddress *addr = (const Win32TranslatedAddress *)address;
 
 	int result = ::bind(socket, (const sockaddr *)addr->data, addr->size);
 
@@ -127,8 +127,8 @@ NETKNOT_API ExceptionPointer Win32Socket::listen(size_t backlog) {
 	return {};
 }
 
-NETKNOT_API ExceptionPointer Win32Socket::connect(const CompiledAddress *address) {
-	const Win32CompiledAddress *addr = (const Win32CompiledAddress *)address;
+NETKNOT_API ExceptionPointer Win32Socket::connect(const TranslatedAddress *address) {
+	const Win32TranslatedAddress *addr = (const Win32TranslatedAddress *)address;
 
 	int result = ::connect(socket, (const sockaddr *)addr->data, addr->size);
 
@@ -285,7 +285,7 @@ NETKNOT_API ExceptionPointer Win32Socket::acceptAsync(peff::Alloc *allocator, Ac
 	{
 		Address addr(addressFamily);
 
-		ioService->compileAddress(nullptr, &addr, nullptr, &compiledAddrSize).unwrap();
+		ioService->translateAddress(nullptr, &addr, nullptr, &compiledAddrSize).unwrap();
 	}
 
 	Win32IOCPOverlapped *overlapped;

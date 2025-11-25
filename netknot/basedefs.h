@@ -3,17 +3,12 @@
 
 #include <peff/base/basedefs.h>
 
-#if NETKNOT_DYNAMIC_LINK
-	#if defined(_MSC_VER)
-		#define NETKNOT_DLLEXPORT __declspec(dllexport)
-		#define NETKNOT_DLLIMPORT __declspec(dllimport)
-	#elif defined(__GNUC__) || defined(__clang__)
-		#define NETKNOT_DLLEXPORT __attribute__((__visibility__("default")))
-		#define NETKNOT_DLLIMPORT __attribute__((__visibility__("default")))
-	#endif
-#else
-	#define NETKNOT_DLLEXPORT
-	#define NETKNOT_DLLIMPORT
+#if defined(_MSC_VER)
+	#define NETKNOT_DLLEXPORT __declspec(dllexport)
+	#define NETKNOT_DLLIMPORT __declspec(dllimport)
+#elif defined(__GNUC__) || defined(__clang__)
+	#define NETKNOT_DLLEXPORT __attribute__((__visibility__("default")))
+	#define NETKNOT_DLLIMPORT __attribute__((__visibility__("default")))
 #endif
 
 #define NETKNOT_FORCEINLINE PEFF_FORCEINLINE
@@ -33,10 +28,14 @@
 	#define NETKNOT_DEF_EXPLICIT_INSTANTIATED_CLASS(apiModifier, name, ...)
 #endif
 
-#if IS_NETKNOT_BASE_BUILDING
-	#define NETKNOT_API NETKNOT_DLLEXPORT
+#if NETKNOT_STATIC_LINK
+	#define NETKNOT_API
 #else
-	#define NETKNOT_API NETKNOT_DLLIMPORT
+	#if IS_NETKNOT_BUILDING
+		#define NETKNOT_API NETKNOT_DLLEXPORT
+	#else
+		#define NETKNOT_API NETKNOT_DLLIMPORT
+	#endif
 #endif
 
 #endif
