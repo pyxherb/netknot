@@ -2,7 +2,7 @@
 
 using namespace http;
 
-Connection::Connection(peff::Alloc *allocator, HttpServer *httpServer, netknot::Socket *socket) : selfAllocator(allocator), httpServer(httpServer), socket(socket), requestCallback(httpServer, this, &peff::g_nullAlloc, allocator), responseCallback(httpServer, this, &peff::g_nullAlloc, allocator) {
+Connection::Connection(peff::Alloc *allocator, HttpServer *httpServer, netknot::Socket *socket) noexcept : selfAllocator(allocator), httpServer(httpServer), socket(socket), requestCallback(httpServer, this, &peff::g_nullAlloc, allocator), responseCallback(httpServer, this, &peff::g_nullAlloc, allocator) {
 }
 Connection::~Connection() {
 }
@@ -13,16 +13,24 @@ Connection *Connection::alloc(peff::Alloc *allocator, HttpServer *httpServer, ne
 	return peff::allocAndConstruct<Connection>(allocator, alignof(Connection), allocator, httpServer, socket);
 }
 
-HttpRequestHandler::HttpRequestHandler() {}
+HandlerURL::HandlerURL(peff::Alloc *selfAllocator) noexcept : selfAllocator(selfAllocator) {
+}
+HandlerURL::~HandlerURL() {
+}
+void HandlerURL::dealloc() noexcept {
+	peff::destroyAndRelease<HandlerURL>(selfAllocator.get(), this, alignof(HandlerURL));
+}
+
+HttpRequestHandler::HttpRequestHandler() noexcept {}
 HttpRequestHandler::~HttpRequestHandler() {}
 
-HttpRequestHandlerRegistry::HttpRequestHandlerRegistry(peff::Alloc *allocator): allocator(allocator), url(allocator) {
+HttpRequestHandlerRegistry::HttpRequestHandlerRegistry(peff::Alloc *allocator) : allocator(allocator), baseUrl(allocator) {
 }
 
 HttpRequestHandlerRegistry::~HttpRequestHandlerRegistry() {
 }
 
-HttpAcceptAsyncCallback::HttpAcceptAsyncCallback(HttpServer *httpServer, peff::Alloc *selfAllocator) : httpServer(httpServer), selfAllocator(selfAllocator) {
+HttpAcceptAsyncCallback::HttpAcceptAsyncCallback(HttpServer *httpServer, peff::Alloc *selfAllocator) noexcept : httpServer(httpServer), selfAllocator(selfAllocator) {
 }
 HttpAcceptAsyncCallback::~HttpAcceptAsyncCallback() {
 }
@@ -317,16 +325,27 @@ netknot::ExceptionPointer HttpWriteAsyncCallback::onStatusChanged(netknot::Write
 	return {};
 }
 
-netknot::ExceptionPointer HttpServer::_reserveHandlerRegistry(const std::string_view& name) {
+netknot::ExceptionPointer HttpServer::_reserveHandlerRegistry(const std::string_view &name) {
 	HttpRequestHandlerRegistry registry(allocator.get());
 
-	if (!registry.url.build(name))
+	if (!registry.baseUrl.build(name))
 		return netknot::OutOfMemoryError::alloc();
+
+	if (!handlerRegistries.insert(registry.baseUrl, std::move(registry)))
+		return netknot::OutOfMemoryError::alloc();
+
+	return {};
+}
+
+void HttpServer::_removeHandlerRegistry(const std::string_view &name) {
+	assert(handlerRegistries.contains(name));
+
+	handlerRegistries.removeWithoutResizeBuckets(name);
 }
 
 HttpServer::HttpServer(peff::Alloc *allocator, netknot::Socket *serverSocket) : allocator(allocator), connections(allocator), serverSocket(serverSocket), handlerRegistries(allocator) {}
 
-[[nodiscard]] bool HttpServer::addConnection(Connection *conn) noexcept {
+bool HttpServer::addConnection(Connection *conn) noexcept {
 	if (!connections.insert({ conn }))
 		return false;
 	return true;
@@ -334,6 +353,18 @@ HttpServer::HttpServer(peff::Alloc *allocator, netknot::Socket *serverSocket) : 
 
 netknot::ExceptionPointer HttpServer::registerGetHandler(const std::string_view &name, HttpRequestHandler *handler) {
 	peff::UniquePtr<HttpRequestHandler, peff::DeallocableDeleter<HttpRequestHandler>> handlerPtr(handler);
+
+	peff::ScopeGuard removeHandlerGuard([this, name]() {
+		_removeHandlerRegistry(name);
+	});
+	if (handlerRegistries.contains(name))
+		NETKNOT_RETURN_IF_EXCEPT(_reserveHandlerRegistry(name));
+	else
+		removeHandlerGuard.release();
+
+	handlerRegistries.at(name).getHandler = std::move(handlerPtr);
+
+	removeHandlerGuard.release();
 
 	return {};
 }

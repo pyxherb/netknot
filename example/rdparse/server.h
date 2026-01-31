@@ -34,7 +34,7 @@ namespace http {
 		char buffer[4096];
 		peff::Option<EmplaceBuffer> emplaceBuffer;
 
-		HttpAcceptAsyncCallback(HttpServer *httpServer, peff::Alloc *selfAllocator);
+		HttpAcceptAsyncCallback(HttpServer *httpServer, peff::Alloc *selfAllocator) noexcept;
 
 		virtual ~HttpAcceptAsyncCallback();
 
@@ -110,7 +110,7 @@ namespace http {
 		HttpReadAsyncCallback requestCallback;
 		HttpWriteAsyncCallback responseCallback;
 
-		Connection(peff::Alloc *allocator, HttpServer *httpServer, netknot::Socket *socket);
+		Connection(peff::Alloc *allocator, HttpServer *httpServer, netknot::Socket *socket) noexcept;
 		~Connection();
 
 		void dealloc() noexcept;
@@ -123,7 +123,7 @@ namespace http {
 
 	class HttpRequestHandler {
 	public:
-		HttpRequestHandler();
+		HttpRequestHandler() noexcept;
 		~HttpRequestHandler();
 
 		virtual void dealloc() = 0;
@@ -131,9 +131,19 @@ namespace http {
 		virtual netknot::ExceptionPointer handleURL(const HttpURLHandlerState &state) = 0;
 	};
 
+	class HandlerURL {
+	public:
+		peff::RcObjectPtr<peff::Alloc> selfAllocator;
+
+		HandlerURL(peff::Alloc *selfAllocator) noexcept;
+		~HandlerURL();
+
+		void dealloc() noexcept;
+	};
+
 	struct HttpRequestHandlerRegistry {
 		peff::RcObjectPtr<peff::Alloc> allocator;
-		peff::String url;
+		peff::String baseUrl;
 		peff::UniquePtr<HttpRequestHandler, peff::DeallocableDeleter<HttpRequestHandler>> getHandler;
 		peff::UniquePtr<HttpRequestHandler, peff::DeallocableDeleter<HttpRequestHandler>> headHandler;
 		peff::UniquePtr<HttpRequestHandler, peff::DeallocableDeleter<HttpRequestHandler>> postHandler;
@@ -150,6 +160,7 @@ namespace http {
 	class HttpServer {
 	private:
 		[[nodiscard]] netknot::ExceptionPointer _reserveHandlerRegistry(const std::string_view &name);
+		void _removeHandlerRegistry(const std::string_view &name);
 
 	public:
 		peff::RcObjectPtr<peff::Alloc> allocator;
