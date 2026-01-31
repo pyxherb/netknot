@@ -79,6 +79,8 @@ namespace netknot {
 		NETKNOT_API virtual ExceptionPointer detranslateAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const TranslatedAddress *address, Address &addressOut) noexcept override;
 	};
 
+	NETKNOT_API ExceptionPointer lastErrorToExcept(peff::Alloc *allocator, DWORD errorCode) noexcept;
+	NETKNOT_API ExceptionPointer wsaLastErrorToExcept(peff::Alloc *allocator, DWORD errorCode) noexcept;
 	NETKNOT_API ExceptionPointer createIOCPIOService(IOService *&ioServiceOut, const IOServiceCreationParams &params) noexcept;
 }
 

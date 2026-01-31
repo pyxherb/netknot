@@ -23,8 +23,11 @@ NETKNOT_API DWORD WINAPI Win32IOService::_workerThreadProc(LPVOID lpThreadParame
 		ULONG_PTR key;
 		LPOVERLAPPED ov;
 
-		if (!GetQueuedCompletionStatus(tld->ioService->iocpCompletionPort, &szTransferred, &key, &ov, INFINITE))
-			std::terminate();
+		if (!GetQueuedCompletionStatus(tld->ioService->iocpCompletionPort, &szTransferred, &key, &ov, INFINITE)) {
+			DWORD e = WSAGetLastError();
+			tld->exceptionStorage = wsaLastErrorToExcept(tld->ioService->selfAllocator.get(), e);
+			return e;
+		}
 
 		if (!key)
 			break;
@@ -185,6 +188,7 @@ NETKNOT_API ExceptionPointer Win32IOService::createSocket(peff::Alloc *allocator
 	} else if (addressFamily == ADDRFAM_IPV6) {
 		af = AF_INET6;
 	} else {
+		// Unhandled address family.
 		std::terminate();
 	}
 
@@ -193,6 +197,7 @@ NETKNOT_API ExceptionPointer Win32IOService::createSocket(peff::Alloc *allocator
 	} else if (socketType == SOCKET_UDP) {
 		s = WSASocket(af, SOCK_DGRAM, IPPROTO_UDP, NULL, 0, WSA_FLAG_OVERLAPPED);
 	} else {
+		// Unhandled address family.
 		std::terminate();
 	}
 
@@ -273,6 +278,68 @@ ExceptionPointer Win32IOService::detranslateAddress(peff::Alloc *allocator, cons
 	std::terminate();
 }
 
+NETKNOT_API ExceptionPointer netknot::lastErrorToExcept(peff::Alloc* allocator, DWORD errorCode) noexcept {
+	switch (errorCode) {
+		case ERROR_OUTOFMEMORY:
+			return OutOfMemoryError::alloc();
+		default:
+			break;
+	}
+	std::terminate();
+}
+
+NETKNOT_API ExceptionPointer netknot::wsaLastErrorToExcept(peff::Alloc* allocator, DWORD errorCode) noexcept {
+	switch (errorCode) {
+		case WSA_NOT_ENOUGH_MEMORY:
+			return OutOfMemoryError::alloc();
+		case WSAEADDRINUSE:
+			return NetworkError::alloc(allocator, NetworkErrorCode::AddressInUse);
+		case WSAEACCES:
+			return NetworkError::alloc(allocator, NetworkErrorCode::AccessDenied);
+		case WSAEMFILE:
+			return NetworkError::alloc(allocator, NetworkErrorCode::TooManyOpenedFiles);
+		case WSAEMSGSIZE:
+			return NetworkError::alloc(allocator, NetworkErrorCode::MessageSizeIsTooBig);
+		case WSAEPROTONOSUPPORT:
+			return NetworkError::alloc(allocator, NetworkErrorCode::ProtocolNotSupported);
+		case WSAESOCKTNOSUPPORT:
+			return NetworkError::alloc(allocator, NetworkErrorCode::SocketTypeNotSupported);
+		case WSAEADDRNOTAVAIL:
+			return NetworkError::alloc(allocator, NetworkErrorCode::AddressNotAvailable);
+		case WSAENETDOWN:
+			return NetworkError::alloc(allocator, NetworkErrorCode::NetworkIsDown);
+		case WSAENETRESET:
+			return NetworkError::alloc(allocator, NetworkErrorCode::NetworkReseted);
+		case WSAENETUNREACH:
+			return NetworkError::alloc(allocator, NetworkErrorCode::NetworkIsUnreachable);
+		case WSAECONNRESET:
+			return NetworkError::alloc(allocator, NetworkErrorCode::ConnectionReseted);
+		case WSAESHUTDOWN:
+			return NetworkError::alloc(allocator, NetworkErrorCode::Shutdown);
+		case WSAETIMEDOUT:
+			return NetworkError::alloc(allocator, NetworkErrorCode::TimedOut);
+		case WSAECONNREFUSED:
+			return NetworkError::alloc(allocator, NetworkErrorCode::ConnectionRefused);
+		case WSAEHOSTDOWN:
+			return NetworkError::alloc(allocator, NetworkErrorCode::HostIsDown);
+		case WSAEHOSTUNREACH:
+			return NetworkError::alloc(allocator, NetworkErrorCode::HostIsUnreachable);
+		case WSAEPROCLIM:
+		case WSAEUSERS:
+		case WSAEDQUOT:
+			return NetworkError::alloc(allocator, NetworkErrorCode::ResourceLimitExceeded);
+		case WSASYSNOTREADY:
+			return NetworkError::alloc(allocator, NetworkErrorCode::SystemIsNotReady);
+		case WSAVERNOTSUPPORTED:
+			return NetworkError::alloc(allocator, NetworkErrorCode::UnsupportedPlatform);
+		case WSANOTINITIALISED:
+			return NetworkError::alloc(allocator, NetworkErrorCode::ErrorInit);
+		default:
+			break;
+	}
+	std::terminate();
+}
+
 NETKNOT_API ExceptionPointer netknot::createIOCPIOService(IOService *&ioServiceOut, const IOServiceCreationParams &params) noexcept {
 	WORD ver = MAKEWORD(2, 2);
 	WSADATA wsaData;
@@ -292,16 +359,25 @@ NETKNOT_API ExceptionPointer netknot::createIOCPIOService(IOService *&ioServiceO
 		peff::constructAt(&ioService->threadLocalData.at(i), ioService.get(), i, params.allocator.get());
 	}
 
-	for (size_t i = 0; i < params.nWorkerThreads; ++i) {
-		Win32IOService::ThreadLocalData &tld = ioService->threadLocalData.at(i);
+	size_t idxWorkerThread = 0;
+	peff::ScopeGuard releaseThreadsGuard([&ioService, &idxWorkerThread]() noexcept {
+		for (size_t j = 0; j < idxWorkerThread; ++j) {
+			Win32IOService::ThreadLocalData &tld = ioService->threadLocalData.at(idxWorkerThread);
+			tld.terminate = true;
+			ResumeThread(tld.hThread);
+		}
+	});
+	while (idxWorkerThread < params.nWorkerThreads) {
+		Win32IOService::ThreadLocalData &tld = ioService->threadLocalData.at(idxWorkerThread);
 
 		HANDLE hThread = CreateThread(NULL, params.szWorkerThreadStackSize, Win32IOService::_workerThreadProc, &tld, CREATE_SUSPENDED, 0);
 
-		if (hThread == INVALID_HANDLE_VALUE) {
-			std::terminate();
-		}
+		if (hThread == INVALID_HANDLE_VALUE)
+			return OutOfMemoryError::alloc();
 
 		tld.hThread = hThread;
+
+		++idxWorkerThread;
 	}
 
 	InitializeCriticalSection(&ioService->terminateNotifyCriticalSection);
@@ -312,6 +388,8 @@ NETKNOT_API ExceptionPointer netknot::createIOCPIOService(IOService *&ioServiceO
 	if (!((ioService->iocpCompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0)))) {
 		std::terminate();
 	}
+
+	releaseThreadsGuard.release();
 
 	ioServiceOut = ioService.release();
 

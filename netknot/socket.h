@@ -193,7 +193,7 @@ namespace netknot {
 	};
 
 	template <typename Callback>
-	class HeapFnReadAsyncCallback final : public ReadAsyncCallback {
+	class FnReadAsyncCallback final : public ReadAsyncCallback {
 	private:
 		peff::Alloc *_allocator;
 		Callback _callback;
@@ -201,8 +201,8 @@ namespace netknot {
 	public:
 		static_assert(std::is_invocable_v<Callback, ReadAsyncTask *>, "The callback is malformed");
 
-		NETKNOT_FORCEINLINE HeapFnReadAsyncCallback(peff::Alloc *allocator, Callback &&callback) : _allocator(allocator), _callback(callback) {}
-		virtual inline ~HeapFnReadAsyncCallback() {}
+		NETKNOT_FORCEINLINE FnReadAsyncCallback(peff::Alloc *allocator, Callback &&callback) : _allocator(allocator), _callback(callback) {}
+		virtual inline ~FnReadAsyncCallback() {}
 
 		virtual void onRefZero() noexcept {
 			peff::destroyAndRelease<decltype(*this)>(_allocator, this, alignof(decltype(*this)));
@@ -214,7 +214,7 @@ namespace netknot {
 	};
 
 	template <typename Callback>
-	class HeapFnWriteAsyncCallback final : public WriteAsyncCallback {
+	class FnWriteAsyncCallback final : public WriteAsyncCallback {
 	private:
 		peff::Alloc *_allocator;
 		Callback _callback;
@@ -222,8 +222,8 @@ namespace netknot {
 	public:
 		static_assert(std::is_invocable_v<Callback, WriteAsyncTask *>, "The callback is malformed");
 
-		NETKNOT_FORCEINLINE HeapFnWriteAsyncCallback(peff::Alloc *allocator, Callback &&callback) : _allocator(allocator), _callback(callback) {}
-		virtual inline ~HeapFnWriteAsyncCallback() {}
+		NETKNOT_FORCEINLINE FnWriteAsyncCallback(peff::Alloc *allocator, Callback &&callback) : _allocator(allocator), _callback(callback) {}
+		virtual inline ~FnWriteAsyncCallback() {}
 
 		virtual void onRefZero() noexcept {
 			peff::destroyAndRelease<decltype(*this)>(_allocator, this, alignof(decltype(*this)));
@@ -235,7 +235,7 @@ namespace netknot {
 	};
 
 	template <typename Callback>
-	class HeapFnAcceptAsyncCallback final : public AcceptAsyncCallback {
+	class FnAcceptAsyncCallback final : public AcceptAsyncCallback {
 	private:
 		peff::Alloc *_allocator;
 		Callback _callback;
@@ -243,8 +243,8 @@ namespace netknot {
 	public:
 		static_assert(std::is_invocable_v<Callback, Socket *>, "The callback is malformed");
 
-		NETKNOT_FORCEINLINE HeapFnAcceptAsyncCallback(peff::Alloc *allocator, Callback &&callback) : _allocator(allocator), _callback(callback) {}
-		virtual inline ~HeapFnAcceptAsyncCallback() {}
+		NETKNOT_FORCEINLINE FnAcceptAsyncCallback(peff::Alloc *allocator, Callback &&callback) : _allocator(allocator), _callback(callback) {}
+		virtual inline ~FnAcceptAsyncCallback() {}
 
 		virtual void onRefZero() noexcept {
 			peff::destroyAndRelease<decltype(*this)>(_allocator, this, alignof(decltype(*this)));
