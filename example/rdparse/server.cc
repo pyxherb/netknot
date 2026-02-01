@@ -2,7 +2,9 @@
 
 using namespace http;
 
-Connection::Connection(peff::Alloc *allocator, HttpServer *httpServer, netknot::Socket *socket) noexcept : selfAllocator(allocator), httpServer(httpServer), socket(socket), requestCallback(httpServer, this, &peff::g_nullAlloc, allocator), responseCallback(httpServer, this, &peff::g_nullAlloc, allocator) {
+using std::operator""sv;
+
+Connection::Connection(peff::Alloc *allocator, HttpServer *httpServer, netknot::Socket *socket) noexcept : selfAllocator(allocator), httpServer(httpServer), socket(socket) {
 }
 Connection::~Connection() {
 }
@@ -22,8 +24,6 @@ void HandlerURL::dealloc() noexcept {
 }
 
 netknot::ExceptionPointer HttpURLHandlerState::writeStatusLine(HttpResponseStatus status) {
-	using std::operator""sv;
-
 	if (this->stage != HttpURLHandlerStateStage::StatusLine)
 		std::terminate();
 
@@ -44,12 +44,7 @@ netknot::ExceptionPointer HttpURLHandlerState::writeStatusLine(HttpResponseStatu
 }
 
 netknot::ExceptionPointer HttpURLHandlerState::writeHeader(const std::string_view &name, const std::string_view &value) {
-	using std::operator""sv;
-
 	if (this->stage != HttpURLHandlerStateStage::ResponseHeaders)
-		std::terminate();
-
-	if (this->stage != HttpURLHandlerStateStage::StatusLine)
 		std::terminate();
 
 	if (!responseData.append(name))
@@ -93,8 +88,6 @@ netknot::ExceptionPointer HttpURLHandlerState::writeBody(const std::string_view 
 }
 
 netknot::ExceptionPointer HttpURLHandlerState::writeResponse(HttpResponseStatus status, const std::string_view &contentType, const std::string_view &body) {
-	using std::operator""sv;
-
 	NETKNOT_RETURN_IF_EXCEPT(writeStatusLine(status));
 	NETKNOT_RETURN_IF_EXCEPT(writeHeader("Content-Type", contentType));
 
@@ -103,6 +96,7 @@ netknot::ExceptionPointer HttpURLHandlerState::writeResponse(HttpResponseStatus 
 	sprintf(lenStr, "%zu", body.size());
 
 	NETKNOT_RETURN_IF_EXCEPT(writeHeader("Content-Length", lenStr));
+	NETKNOT_RETURN_IF_EXCEPT(endHeader());
 	NETKNOT_RETURN_IF_EXCEPT(writeBody(body));
 
 	this->stage = HttpURLHandlerStateStage::End;
@@ -110,10 +104,10 @@ netknot::ExceptionPointer HttpURLHandlerState::writeResponse(HttpResponseStatus 
 	return {};
 }
 
-HttpRequestHandler::HttpRequestHandler() noexcept {}
+HttpRequestHandler::HttpRequestHandler(const std::string_view &methodName) noexcept : _methodName(methodName) {}
 HttpRequestHandler::~HttpRequestHandler() {}
 
-HttpRequestHandlerRegistry::HttpRequestHandlerRegistry(peff::Alloc *allocator) : allocator(allocator), baseUrl(allocator) {
+HttpRequestHandlerRegistry::HttpRequestHandlerRegistry(peff::Alloc *allocator) : allocator(allocator), baseUrl(allocator), handlers(allocator) {
 }
 
 HttpRequestHandlerRegistry::~HttpRequestHandlerRegistry() {
@@ -143,7 +137,19 @@ netknot::ExceptionPointer HttpAcceptAsyncCallback::onAccepted(netknot::Socket *s
 
 	EmplaceBuffer bb(buffer, sizeof(buffer));
 	netknot::RcBufferRef bufferRef(&*(emplaceBuffer = peff::Option<EmplaceBuffer>(std::move(bb))));
-	NETKNOT_RETURN_IF_EXCEPT(conn->socket->readAsync(selfAllocator.get(), bufferRef, &conn->requestCallback, task));
+
+	if (!(conn->requestCallback = peff::allocAndConstruct<HttpReadAsyncCallback>(
+			  httpServer->allocator.get(), alignof(HttpReadAsyncCallback),
+			  httpServer,
+			  conn.get(),
+			  &peff::g_nullAlloc,
+			  httpServer->allocator.get())))
+		return netknot::OutOfMemoryError::alloc();
+	NETKNOT_RETURN_IF_EXCEPT(conn->socket->readAsync(
+		selfAllocator.get(),
+		bufferRef,
+		conn->requestCallback.get(),
+		task));
 
 	conn.release();
 
@@ -365,7 +371,17 @@ netknot::ExceptionPointer HttpReadAsyncCallback::onStatusChanged(netknot::ReadAs
 						std::terminate();
 					} else {
 						std::string_view rawPath = requestLineView.path;
-						std::string_view queryView, fragmentView;
+						std::string_view pathView, queryView, fragmentView;
+
+						HttpURLHandlerState urlHandlerState = {
+							httpServer,
+							connection,
+							pathView,
+							queryView,
+							fragmentView,
+							requestHeaderView,
+							peff::String(httpServer->allocator.get())
+						};
 
 						size_t offQuery = rawPath.find_first_of('?', 0);
 						size_t offFragment = rawPath.find_first_of('#', 0);
@@ -373,26 +389,49 @@ netknot::ExceptionPointer HttpReadAsyncCallback::onStatusChanged(netknot::ReadAs
 						if (offFragment != std::string_view::npos) {
 							if (offQuery != std::string_view::npos) {
 								if (offQuery > offFragment) {
-									std::string_view response =
-										"HTTP/1.1 400 Bad Request\r\n"
-										"Content-Type: text/plain\r\n"
-										"Content-Length: 0\r\n"
-										"\r\n";
-									EmplaceBuffer rb((char *)response.data(), response.size());
-									netknot::RcBufferRef bufferRef(&*(responseBuffer = peff::Option<EmplaceBuffer>(std::move(rb))));
-
-									netknot::WriteAsyncTask *task;
-									NETKNOT_RETURN_IF_EXCEPT(connection->socket->writeAsync(httpServer->allocator.get(), bufferRef, &connection->responseCallback, task));
+									urlHandlerState.writeResponse(HttpResponseStatus::BadRequest, "text/plain", "");
+									goto writeResponse;
 								}
 								queryView = rawPath.substr(offQuery, offFragment - offQuery);
 								fragmentView = rawPath.substr(offFragment);
-							} else
+								pathView = rawPath.substr(0, offQuery);
+							} else {
+								pathView = rawPath.substr(0, offFragment);
 								fragmentView = rawPath.substr(offFragment);
+							}
 						} else {
-							if (offQuery != std::string_view::npos)
+							if (offQuery != std::string_view::npos) {
+								pathView = rawPath.substr(0, offQuery);
 								queryView = rawPath.substr(offQuery);
+							} else {
+								pathView = rawPath;
+							}
 						}
+
+						if (auto it = httpServer->handlerRegistries.find(pathView); it != httpServer->handlerRegistries.end()) {
+							const auto &registry = it.value();
+							if (auto jt = registry.handlers.find(requestLineView.method); jt != registry.handlers.end())
+								NETKNOT_RETURN_IF_EXCEPT(jt.value()->handleURL(urlHandlerState));
+							else
+								urlHandlerState.writeResponse(HttpResponseStatus::MethodNotAllowed, "text/plain", "");
+						} else
+							urlHandlerState.writeResponse(HttpResponseStatus::NotFound, "text/plain", "");
+
+					writeResponse:
+						if (!(connection->responseCallback = peff::allocAndConstruct<HttpWriteAsyncCallback>(
+							httpServer->allocator.get(), alignof(HttpWriteAsyncCallback),
+								  httpServer, connection, httpServer->allocator.get(), httpServer->allocator.get())))
+							return netknot::OutOfMemoryError::alloc();
+						HttpWriteAsyncCallback *callback = connection->responseCallback.get();
+
+						callback->bufferData = std::move(urlHandlerState.responseData);
+						callback->buffer = EmplaceBuffer(callback->bufferData.data(), callback->bufferData.size());
+						netknot::RcBufferRef bufferRef(&*callback->buffer);
+
+						netknot::WriteAsyncTask *task;
+						NETKNOT_RETURN_IF_EXCEPT(connection->socket->writeAsync(httpServer->allocator.get(), bufferRef, callback, task));
 					}
+
 					break;
 				}
 			}
@@ -449,11 +488,9 @@ void HttpServer::_removeHandlerRegistry(const std::string_view &name) {
 	handlerRegistries.removeWithoutResizeBuckets(name);
 }
 
-HttpServer::HttpServer(peff::Alloc *allocator, netknot::Socket *serverSocket) : allocator(allocator), connections(allocator), serverSocket(serverSocket), handlerRegistries(allocator) {}
+HttpServer::HttpServer(peff::Alloc *allocator, netknot::IOService *ioService, netknot::Socket *serverSocket) : allocator(allocator), ioService(ioService), connections(allocator), serverSocket(serverSocket), handlerRegistries(allocator) {}
 
 std::string_view HttpServer::getHttpResponseMessage(HttpResponseStatus status) {
-	using std::operator""sv;
-
 	switch (status) {
 		case HttpResponseStatus::Continue:
 			return "100 Continue"sv;
@@ -590,18 +627,19 @@ bool HttpServer::addConnection(Connection *conn) noexcept {
 	return true;
 }
 
-netknot::ExceptionPointer HttpServer::registerGetHandler(const std::string_view &name, HttpRequestHandler *handler) {
+netknot::ExceptionPointer HttpServer::registerHandler(const std::string_view &name, HttpRequestHandler *handler) {
 	peff::UniquePtr<HttpRequestHandler, peff::DeallocableDeleter<HttpRequestHandler>> handlerPtr(handler);
 
-	peff::ScopeGuard removeHandlerGuard([this, name]() {
+	peff::ScopeGuard removeHandlerGuard([this, name]() noexcept {
 		_removeHandlerRegistry(name);
 	});
-	if (handlerRegistries.contains(name))
+	if (!handlerRegistries.contains(name))
 		NETKNOT_RETURN_IF_EXCEPT(_reserveHandlerRegistry(name));
 	else
 		removeHandlerGuard.release();
 
-	handlerRegistries.at(name).getHandler = std::move(handlerPtr);
+	if(!handlerRegistries.at(name).handlers.insert(std::string_view(handlerPtr->_methodName), std::move(handlerPtr)))
+		return netknot::OutOfMemoryError::alloc();
 
 	removeHandlerGuard.release();
 

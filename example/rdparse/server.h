@@ -90,6 +90,7 @@ namespace http {
 	class EmplaceBuffer : public netknot::RcBuffer {
 	public:
 		EmplaceBuffer(char *data, size_t size);
+		EmplaceBuffer(EmplaceBuffer &&) = default;
 		~EmplaceBuffer();
 
 		virtual size_t incRef(size_t globalRc) override;
@@ -122,9 +123,12 @@ namespace http {
 		peff::HashMap<std::string_view, std::string_view> headers;
 
 		HttpRequestHeaderView(peff::Alloc *allocator);
+		HttpRequestHeaderView(HttpRequestHeaderView &&) = default;
+
+		HttpRequestHeaderView &operator=(HttpRequestHeaderView &&) = default;
 	};
 
-	class HttpReadAsyncCallback : public netknot::ReadAsyncCallback {
+	class HttpReadAsyncCallback final : public netknot::ReadAsyncCallback {
 	public:
 		peff::RcObjectPtr<peff::Alloc> selfAllocator, allocator;
 		HttpServer *httpServer;
@@ -144,6 +148,7 @@ namespace http {
 		peff::Option<EmplaceBuffer> responseBuffer;
 
 		HttpReadAsyncCallback(HttpServer *httpServer, Connection *connection, peff::Alloc *selfAllocator, peff::Alloc *allocator);
+		HttpReadAsyncCallback(const HttpReadAsyncCallback &) = delete;
 
 		virtual ~HttpReadAsyncCallback();
 
@@ -156,7 +161,7 @@ namespace http {
 		virtual netknot::ExceptionPointer onStatusChanged(netknot::ReadAsyncTask *task) noexcept override;
 	};
 
-	class HttpWriteAsyncCallback : public netknot::WriteAsyncCallback {
+	class HttpWriteAsyncCallback final : public netknot::WriteAsyncCallback {
 	public:
 		peff::RcObjectPtr<peff::Alloc> selfAllocator, allocator;
 		Connection *connection;
@@ -165,6 +170,7 @@ namespace http {
 		peff::Option<EmplaceBuffer> buffer;
 
 		HttpWriteAsyncCallback(HttpServer *httpServer, Connection *connection, peff::Alloc *selfAllocator, peff::Alloc *allocator);
+		HttpWriteAsyncCallback(const HttpWriteAsyncCallback &) = delete;
 
 		virtual ~HttpWriteAsyncCallback();
 
@@ -178,8 +184,8 @@ namespace http {
 		HttpServer *httpServer;
 		std::unique_ptr<netknot::Socket, peff::DeallocableDeleter<netknot::Socket>> socket;
 		peff::RcObjectPtr<peff::Alloc> selfAllocator;
-		HttpReadAsyncCallback requestCallback;
-		HttpWriteAsyncCallback responseCallback;
+		peff::RcObjectPtr<HttpReadAsyncCallback> requestCallback;
+		peff::RcObjectPtr<HttpWriteAsyncCallback> responseCallback;
 
 		Connection(peff::Alloc *allocator, HttpServer *httpServer, netknot::Socket *socket) noexcept;
 		~Connection();
@@ -199,9 +205,9 @@ namespace http {
 	struct HttpURLHandlerState {
 		HttpServer *httpServer;
 		Connection *connection;
-		std::string_view urlPath;
-		std::string_view urlQuery;
-		std::string_view urlFragment;
+		const std::string_view &urlPath;
+		const std::string_view &urlQuery;
+		const std::string_view &urlFragment;
 		const HttpRequestHeaderView &requestHeaderView;
 		peff::String responseData;
 
@@ -215,14 +221,48 @@ namespace http {
 	};
 
 	class HttpRequestHandler {
-	public:
-		HttpRequestHandler() noexcept;
-		~HttpRequestHandler();
+	private:
+		const std::string_view _methodName;
+		friend class HttpServer;
 
-		virtual void dealloc() = 0;
+	public:
+		HttpRequestHandler(const std::string_view &methodName) noexcept;
+		virtual ~HttpRequestHandler();
+
+		virtual void dealloc() noexcept = 0;
 
 		virtual netknot::ExceptionPointer handleURL(const HttpURLHandlerState &state) = 0;
 	};
+
+	template <typename Fn>
+	class FnHttpRequestHandler : public HttpRequestHandler {
+	public:
+		using ThisType = FnHttpRequestHandler<Fn>;
+
+		peff::RcObjectPtr<peff::Alloc> allocator;
+		Fn f;
+
+		static_assert(std::is_invocable_v<Fn, const HttpURLHandlerState &>, "The callback is malformed");
+		static_assert(std::is_same_v<std::invoke_result_t<Fn, const HttpURLHandlerState &>, netknot::ExceptionPointer>, "The callback is malformed");
+
+		FnHttpRequestHandler(peff::Alloc *allocator, const std::string_view &methodName, Fn &&f) noexcept : HttpRequestHandler(methodName), allocator(allocator), f(std::move(f)) {
+		}
+		virtual ~FnHttpRequestHandler() {
+		}
+
+		virtual void dealloc() noexcept override {
+			peff::destroyAndRelease<ThisType>(allocator.get(), this, alignof(ThisType));
+		}
+
+		virtual netknot::ExceptionPointer handleURL(const HttpURLHandlerState &state) override {
+			return f(state);
+		}
+	};
+
+	template <typename Fn>
+	FnHttpRequestHandler<Fn> *allocFnHttpRequestHandler(peff::Alloc *allocator, const std::string_view &methodName, Fn &&f) noexcept {
+		return peff::allocAndConstruct<FnHttpRequestHandler<Fn>>(allocator, alignof(FnHttpRequestHandler<Fn>), allocator, methodName, std::move(f));
+	}
 
 	class HandlerURL {
 	public:
@@ -237,16 +277,10 @@ namespace http {
 	struct HttpRequestHandlerRegistry {
 		peff::RcObjectPtr<peff::Alloc> allocator;
 		peff::String baseUrl;
-		peff::UniquePtr<HttpRequestHandler, peff::DeallocableDeleter<HttpRequestHandler>> getHandler;
-		peff::UniquePtr<HttpRequestHandler, peff::DeallocableDeleter<HttpRequestHandler>> headHandler;
-		peff::UniquePtr<HttpRequestHandler, peff::DeallocableDeleter<HttpRequestHandler>> postHandler;
-		peff::UniquePtr<HttpRequestHandler, peff::DeallocableDeleter<HttpRequestHandler>> putHandler;
-		peff::UniquePtr<HttpRequestHandler, peff::DeallocableDeleter<HttpRequestHandler>> deleteHandler;
-		peff::UniquePtr<HttpRequestHandler, peff::DeallocableDeleter<HttpRequestHandler>> connectHandler;
-		peff::UniquePtr<HttpRequestHandler, peff::DeallocableDeleter<HttpRequestHandler>> optionsHandler;
-		peff::UniquePtr<HttpRequestHandler, peff::DeallocableDeleter<HttpRequestHandler>> patchHandler;
+		peff::HashMap<std::string_view, peff::UniquePtr<HttpRequestHandler, peff::DeallocableDeleter<HttpRequestHandler>>> handlers;
 
 		HttpRequestHandlerRegistry(peff::Alloc *allocator);
+		HttpRequestHandlerRegistry(HttpRequestHandlerRegistry &&) = default;
 		~HttpRequestHandlerRegistry();
 	};
 
@@ -257,17 +291,18 @@ namespace http {
 
 	public:
 		peff::RcObjectPtr<peff::Alloc> allocator;
+		netknot::IOService *ioService;
 		peff::UniquePtr<netknot::Socket, peff::DeallocableDeleter<netknot::Socket>> serverSocket;
 		peff::Set<peff::UniquePtr<Connection, peff::DeallocableDeleter<Connection>>> connections;
 		peff::HashMap<std::string_view, HttpRequestHandlerRegistry> handlerRegistries;
 
-		HttpServer(peff::Alloc *allocator, netknot::Socket *serverSocket);
+		HttpServer(peff::Alloc *allocator, netknot::IOService *ioService, netknot::Socket *serverSocket);
 
 		static std::string_view getHttpResponseMessage(HttpResponseStatus status);
 
 		[[nodiscard]] bool addConnection(Connection *conn) noexcept;
 
-		[[nodiscard]] netknot::ExceptionPointer registerGetHandler(const std::string_view &name, HttpRequestHandler *handler);
+		[[nodiscard]] netknot::ExceptionPointer registerHandler(const std::string_view &name, HttpRequestHandler *handler);
 	};
 }
 

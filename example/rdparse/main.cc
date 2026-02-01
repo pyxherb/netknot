@@ -37,7 +37,7 @@ int main() {
 			std::terminate();
 		}
 
-		http::HttpServer httpServer(peff::getDefaultAlloc(), socket.release());
+		http::HttpServer httpServer(peff::getDefaultAlloc(), ioService.get(), socket.release());
 
 		peff::RcObjectPtr<http::HttpAcceptAsyncCallback> callback;
 
@@ -46,6 +46,19 @@ int main() {
 
 		peff::RcObjectPtr<netknot::AcceptAsyncTask> acceptAsyncTask;
 		if ((e = httpServer.serverSocket->acceptAsync(peff::getDefaultAlloc(), callback.get(), acceptAsyncTask.getRef()))) {
+			std::terminate();
+		}
+
+		peff::UniquePtr<http::HttpRequestHandler, peff::DeallocableDeleter<http::HttpRequestHandler>> stopGetHandler = http::allocFnHttpRequestHandler(
+			peff::getDefaultAlloc(),
+			"GET",
+			[](const http::HttpURLHandlerState &state) -> netknot::ExceptionPointer {
+				return state.httpServer->ioService->stop();
+			});
+		if (!stopGetHandler)
+			std::terminate();
+
+		if ((e = httpServer.registerHandler("/stop", stopGetHandler.release()))) {
 			std::terminate();
 		}
 

@@ -212,7 +212,11 @@ NETKNOT_API ExceptionPointer Win32Socket::readAsync(peff::Alloc *allocator, cons
 			return wsaLastErrorToExcept(ioService->selfAllocator.get(), errorCode);
 	}
 
+#if PEFF_ENABLE_RCOBJ_DEBUGGING
 	task->incRef(peff::acquireGlobalRcObjectPtrCounter());
+#else
+	task->incRef(0);
+#endif
 	asyncTaskOut = task.get();
 
 	return {};
@@ -252,7 +256,11 @@ NETKNOT_API ExceptionPointer Win32Socket::writeAsync(peff::Alloc *allocator, con
 	if (result == SOCKET_ERROR)
 		return wsaLastErrorToExcept(ioService->selfAllocator.get(), WSAGetLastError());
 
+#if PEFF_ENABLE_RCOBJ_DEBUGGING
 	task->incRef(peff::acquireGlobalRcObjectPtrCounter());
+#else
+	task->incRef(0);
+#endif
 	asyncTaskOut = task.release();
 
 	return {};
@@ -307,7 +315,11 @@ NETKNOT_API ExceptionPointer Win32Socket::acceptAsync(peff::Alloc *allocator, Ac
 
 	newSocket.release();
 
+#if PEFF_ENABLE_RCOBJ_DEBUGGING
 	task->incRef(peff::acquireGlobalRcObjectPtrCounter());
+#else
+	task->incRef(0);
+#endif
 	asyncTaskOut = task.release();
 
 	return {};
