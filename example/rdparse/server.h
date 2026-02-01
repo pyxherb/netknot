@@ -203,11 +203,15 @@ namespace http {
 		std::string_view urlQuery;
 		std::string_view urlFragment;
 		const HttpRequestHeaderView &requestHeaderView;
-		netknot::Socket *responseSocket;
+		peff::String responseData;
 
 		HttpURLHandlerStateStage stage = HttpURLHandlerStateStage::StatusLine;
 
 		netknot::ExceptionPointer writeStatusLine(HttpResponseStatus stauts);
+		netknot::ExceptionPointer writeHeader(const std::string_view &name, const std::string_view &value);
+		netknot::ExceptionPointer endHeader();
+		netknot::ExceptionPointer writeBody(const std::string_view &data);
+		netknot::ExceptionPointer writeResponse(HttpResponseStatus status, const std::string_view &contentType, const std::string_view &body);
 	};
 
 	class HttpRequestHandler {
