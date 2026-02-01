@@ -21,6 +21,42 @@ void HandlerURL::dealloc() noexcept {
 	peff::destroyAndRelease<HandlerURL>(selfAllocator.get(), this, alignof(HandlerURL));
 }
 
+netknot::ExceptionPointer HttpURLHandlerState::writeStatusLine(HttpResponseStatus status) {
+	using std::operator""sv;
+
+	if (this->stage != HttpURLHandlerStateStage::StatusLine)
+		std::terminate();
+
+	std::string_view httpVersion = "HTTP/1,1 "sv;
+
+	peff::String statusLine(httpServer->allocator.get());
+
+	if (!statusLine.build(httpVersion))
+		return netknot::OutOfMemoryError::alloc();
+
+	if (!statusLine.append(HttpServer::getHttpResponseMessage(status)))
+		return netknot::OutOfMemoryError::alloc();
+
+	if (!statusLine.append("\r\n"))
+		return netknot::OutOfMemoryError::alloc();
+
+	peff::RcObjectPtr<HttpWriteAsyncCallback> callback = peff::allocAndConstruct<HttpWriteAsyncCallback>(
+		httpServer->allocator.get(), alignof(HttpWriteAsyncCallback),
+		httpServer, connection, httpServer->allocator.get(), httpServer->allocator.get());
+	if (!callback)
+		return netknot::OutOfMemoryError::alloc();
+
+	callback->bufferData = std::move(statusLine);
+	callback->buffer = EmplaceBuffer(callback->bufferData.data(), callback->bufferData.size());
+	netknot::RcBufferRef bufferRef(&*callback->buffer);
+
+	netknot::WriteAsyncTask *task;
+	NETKNOT_RETURN_IF_EXCEPT(connection->socket->writeAsync(httpServer->allocator.get(), bufferRef, callback.get(), task));
+
+	this->stage = HttpURLHandlerStateStage::ResponseHeaders;
+	return {};
+}
+
 HttpRequestHandler::HttpRequestHandler() noexcept {}
 HttpRequestHandler::~HttpRequestHandler() {}
 
@@ -275,17 +311,34 @@ netknot::ExceptionPointer HttpReadAsyncCallback::onStatusChanged(netknot::ReadAs
 					if (isChunked) {
 						std::terminate();
 					} else {
-						std::string_view response =
-							"HTTP/1.1 200 OK\r\n"
-							"Content-Type: text/plain\r\n"
-							"Content-Length: 13\r\n"
-							"\r\n"
-							"Hello, World!";
-						EmplaceBuffer rb((char *)response.data(), response.size());
-						netknot::RcBufferRef bufferRef(&*(responseBuffer = peff::Option<EmplaceBuffer>(std::move(rb))));
+						std::string_view rawPath = requestLineView.path;
+						std::string_view queryView, fragmentView;
 
-						netknot::WriteAsyncTask *task;
-						NETKNOT_RETURN_IF_EXCEPT(connection->socket->writeAsync(httpServer->allocator.get(), bufferRef, &connection->responseCallback, task));
+						size_t offQuery = rawPath.find_first_of('?', 0);
+						size_t offFragment = rawPath.find_first_of('#', 0);
+
+						if (offFragment != std::string_view::npos) {
+							if (offQuery != std::string_view::npos) {
+								if (offQuery > offFragment) {
+									std::string_view response =
+										"HTTP/1.1 400 Bad Request\r\n"
+										"Content-Type: text/plain\r\n"
+										"Content-Length: 0\r\n"
+										"\r\n";
+									EmplaceBuffer rb((char *)response.data(), response.size());
+									netknot::RcBufferRef bufferRef(&*(responseBuffer = peff::Option<EmplaceBuffer>(std::move(rb))));
+
+									netknot::WriteAsyncTask *task;
+									NETKNOT_RETURN_IF_EXCEPT(connection->socket->writeAsync(httpServer->allocator.get(), bufferRef, &connection->responseCallback, task));
+								}
+								queryView = rawPath.substr(offQuery, offFragment - offQuery);
+								fragmentView = rawPath.substr(offFragment);
+							} else
+								fragmentView = rawPath.substr(offFragment);
+						} else {
+							if (offQuery != std::string_view::npos)
+								queryView = rawPath.substr(offQuery);
+						}
 					}
 					break;
 				}
@@ -303,7 +356,7 @@ netknot::ExceptionPointer HttpReadAsyncCallback::onStatusChanged(netknot::ReadAs
 	return {};
 }
 
-HttpWriteAsyncCallback::HttpWriteAsyncCallback(HttpServer *httpServer, Connection *connection, peff::Alloc *selfAllocator, peff::Alloc *allocator) : httpServer(httpServer), connection(connection), selfAllocator(selfAllocator), allocator(allocator) {
+HttpWriteAsyncCallback::HttpWriteAsyncCallback(HttpServer *httpServer, Connection *connection, peff::Alloc *selfAllocator, peff::Alloc *allocator) : httpServer(httpServer), connection(connection), selfAllocator(selfAllocator), allocator(allocator), bufferData(allocator) {
 }
 HttpWriteAsyncCallback::~HttpWriteAsyncCallback() {
 }
@@ -344,6 +397,139 @@ void HttpServer::_removeHandlerRegistry(const std::string_view &name) {
 }
 
 HttpServer::HttpServer(peff::Alloc *allocator, netknot::Socket *serverSocket) : allocator(allocator), connections(allocator), serverSocket(serverSocket), handlerRegistries(allocator) {}
+
+std::string_view HttpServer::getHttpResponseMessage(HttpResponseStatus status) {
+	using std::operator""sv;
+
+	switch (status) {
+		case HttpResponseStatus::Continue:
+			return "100 Continue"sv;
+		case HttpResponseStatus::SwitchingProtocols:
+			return "101 Switching Protocols"sv;
+		case HttpResponseStatus::Processing:
+			return "102 Processing"sv;
+		case HttpResponseStatus::EarlyHints:
+			return "103 Early Hints"sv;
+		case HttpResponseStatus::OK:
+			return "200 OK"sv;
+		case HttpResponseStatus::Created:
+			return "201 Created"sv;
+		case HttpResponseStatus::Accepted:
+			return "202 Accepted"sv;
+		case HttpResponseStatus::NonAuthoritativeInformation:
+			return "203 Non-Authoritative Information"sv;
+		case HttpResponseStatus::NoContent:
+			return "204 No Content"sv;
+		case HttpResponseStatus::ResetContent:
+			return "205 Reset Content"sv;
+		case HttpResponseStatus::PartialContent:
+			return "206 Partial Content"sv;
+		case HttpResponseStatus::MultiStatus:
+			return "207 Multi-Status"sv;
+		case HttpResponseStatus::AlreadyReported:
+			return "208 Already Reported"sv;
+		case HttpResponseStatus::IMUsed:
+			return "226 IM Used"sv;
+		case HttpResponseStatus::MultipleChoice:
+			return "300 Multiple Choice"sv;
+		case HttpResponseStatus::MovedPermanently:
+			return "301 Moved Permanently"sv;
+		case HttpResponseStatus::Found:
+			return "302 Found"sv;
+		case HttpResponseStatus::SeeOther:
+			return "303 See Other"sv;
+		case HttpResponseStatus::NotModified:
+			return "304 Not Modified"sv;
+		case HttpResponseStatus::UseProxy:
+			return "305 Use Proxy"sv;
+		case HttpResponseStatus::TemporaryRedirect:
+			return "307 Temporary Redirect"sv;
+		case HttpResponseStatus::PermanentRedirect:
+			return "308 Permanent Redirect"sv;
+		case HttpResponseStatus::BadRequest:
+			return "400 Bad Request"sv;
+		case HttpResponseStatus::Unauthorized:
+			return "401 Unauthorized"sv;
+		case HttpResponseStatus::PaymentRequired:
+			return "402 Payment Required"sv;
+		case HttpResponseStatus::Forbidden:
+			return "403 Forbidden"sv;
+		case HttpResponseStatus::NotFound:
+			return "404 Not Found"sv;
+		case HttpResponseStatus::MethodNotAllowed:
+			return "405 Method Not Allowed"sv;
+		case HttpResponseStatus::NotAcceptable:
+			return "406 Not Acceptable"sv;
+		case HttpResponseStatus::ProxyAuthenticationRequired:
+			return "407 Proxy Authentication Required"sv;
+		case HttpResponseStatus::RequestTimeout:
+			return "408 Request Timeout"sv;
+		case HttpResponseStatus::Conflict:
+			return "409 Conflict"sv;
+		case HttpResponseStatus::Gone:
+			return "410 Gone"sv;
+		case HttpResponseStatus::LengthRequired:
+			return "411 Length Required"sv;
+		case HttpResponseStatus::PreconditionFailed:
+			return "412 Precondition Failed"sv;
+		case HttpResponseStatus::PayloadTooLarge:
+			return "413 Payload Too Large"sv;
+		case HttpResponseStatus::URITooLong:
+			return "414 URI Too Long"sv;
+		case HttpResponseStatus::UnsupportedMediaType:
+			return "415 Unsupported Media Type"sv;
+		case HttpResponseStatus::RangeNotSatisfiable:
+			return "416 Range Not Satisfiable"sv;
+		case HttpResponseStatus::ExpectationFailed:
+			return "417 Expectation Failed"sv;
+		case HttpResponseStatus::ImATeapot:
+			return "418 I'm a teapot"sv;
+		case HttpResponseStatus::MisdirectedRequest:
+			return "421 Misdirected Request"sv;
+		case HttpResponseStatus::UnprocessableEntity:
+			return "422 Unprocessable Entity"sv;
+		case HttpResponseStatus::Locked:
+			return "423 Locked"sv;
+		case HttpResponseStatus::FailedDependency:
+			return "424 Failed Dependency"sv;
+		case HttpResponseStatus::TooEarly:
+			return "425 Too Early"sv;
+		case HttpResponseStatus::UpgradeRequired:
+			return "426 Upgrade Required"sv;
+		case HttpResponseStatus::PreconditionRequired:
+			return "428 Precondition Required"sv;
+		case HttpResponseStatus::TooManyRequests:
+			return "429 Too Many Requests"sv;
+		case HttpResponseStatus::RequestHeaderFieldsTooLarge:
+			return "431 Request Header Fields Too Large"sv;
+		case HttpResponseStatus::UnavailableForLegalReasons:
+			return "451 Unavailable For Legal Reasons"sv;
+		case HttpResponseStatus::InternalServerError:
+			return "500 Internal Server Error"sv;
+		case HttpResponseStatus::NotImplemented:
+			return "501 Not Implemented"sv;
+		case HttpResponseStatus::BadGateway:
+			return "502 Bad Gateway"sv;
+		case HttpResponseStatus::ServiceUnavailable:
+			return "503 Service Unavailable"sv;
+		case HttpResponseStatus::GatewayTimeout:
+			return "504 Gateway Timeout"sv;
+		case HttpResponseStatus::HTTPVersionNotSupported:
+			return "505 HTTP Version Not Supported"sv;
+		case HttpResponseStatus::VariantAlsoNegotiates:
+			return "506 Variant Also Negotiates"sv;
+		case HttpResponseStatus::InsufficientStorage:
+			return "507 Insufficient Storage"sv;
+		case HttpResponseStatus::LoopDetected:
+			return "508 Loop Detected"sv;
+		case HttpResponseStatus::NotExtended:
+			return "510 Not Extended"sv;
+		case HttpResponseStatus::NetworkAuthenticationRequired:
+			return "511 Netowkr Authentication Required"sv;
+		default:
+			std::terminate();
+	}
+}
 
 bool HttpServer::addConnection(Connection *conn) noexcept {
 	if (!connections.insert({ conn }))
