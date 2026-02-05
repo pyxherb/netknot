@@ -485,7 +485,7 @@ netknot::ExceptionPointer HttpServer::_reserveHandlerRegistry(const std::string_
 void HttpServer::_removeHandlerRegistry(const std::string_view &name) {
 	assert(handlerRegistries.contains(name));
 
-	handlerRegistries.removeWithoutResizeBuckets(name);
+	handlerRegistries.remove(name);
 }
 
 HttpServer::HttpServer(peff::Alloc *allocator, netknot::IOService *ioService, netknot::Socket *serverSocket) : allocator(allocator), ioService(ioService), connections(allocator), serverSocket(serverSocket), handlerRegistries(allocator) {}

@@ -34,50 +34,60 @@ NETKNOT_API DWORD WINAPI Win32IOService::_workerThreadProc(LPVOID lpThreadParame
 
 		Win32IOCPOverlapped *iocpOverlapped = (Win32IOCPOverlapped *)ov;
 
-		switch (iocpOverlapped->asyncTask->getTaskType()) {
-			case AsyncTaskType::Read: {
-				Win32ReadAsyncTask *task = (Win32ReadAsyncTask *)iocpOverlapped->asyncTask;
+		peff::RcObjectPtr<AsyncTask> rawTask = iocpOverlapped->asyncTask;
+		tld->ioService->currentTasksMutex.lock();
+		if (tld->ioService->currentTasks.contains(iocpOverlapped->asyncTask)) {
+			tld->ioService->currentTasks.remove(iocpOverlapped->asyncTask);
 
-				task->szRead += szTransferred;
-				task->status = AsyncTaskStatus::Done;
+			tld->ioService->currentTasksMutex.unlock();
 
-				if ((tld->exceptionStorage = task->callback->onStatusChanged(task))) {
-					WakeAllConditionVariable(&tld->ioService->terminateNotifyConditionVar);
-					return -1;
+			switch (iocpOverlapped->asyncTask->getTaskType()) {
+				case AsyncTaskType::Read: {
+					peff::RcObjectPtr<Win32ReadAsyncTask> task = (Win32ReadAsyncTask *)iocpOverlapped->asyncTask;
+
+					std::lock_guard accessGuard(task->accessMutex);
+
+					task->szRead += szTransferred;
+					task->status = AsyncTaskStatus::Done;
+
+					if ((tld->exceptionStorage = task->callback->onStatusChanged(task.get()))) {
+						WakeAllConditionVariable(&tld->ioService->terminateNotifyConditionVar);
+						return -1;
+					}
+
+					break;
 				}
+				case AsyncTaskType::Write: {
+					peff::RcObjectPtr<Win32WriteAsyncTask> task = (Win32WriteAsyncTask *)iocpOverlapped->asyncTask;
 
-				tld->ioService->currentTasks.remove(task);
+					std::lock_guard accessGuard(task->accessMutex);
 
-				break;
-			}
-			case AsyncTaskType::Write: {
-				Win32WriteAsyncTask *task = (Win32WriteAsyncTask *)iocpOverlapped->asyncTask;
+					task->szWritten += szTransferred;
+					task->status = AsyncTaskStatus::Done;
 
-				task->szWritten += szTransferred;
-				task->status = AsyncTaskStatus::Done;
+					if ((tld->exceptionStorage = task->callback->onStatusChanged(task.get()))) {
+						WakeAllConditionVariable(&tld->ioService->terminateNotifyConditionVar);
+						return -1;
+					}
 
-				if ((tld->exceptionStorage = task->callback->onStatusChanged(task))) {
-					WakeAllConditionVariable(&tld->ioService->terminateNotifyConditionVar);
-					return -1;
+					break;
 				}
+				case AsyncTaskType::Accept: {
+					peff::RcObjectPtr<Win32AcceptAsyncTask> task = (Win32AcceptAsyncTask *)iocpOverlapped->asyncTask;
 
-				tld->ioService->currentTasks.remove(task);
-				break;
-			}
-			case AsyncTaskType::Accept: {
-				Win32AcceptAsyncTask *task = (Win32AcceptAsyncTask *)iocpOverlapped->asyncTask;
+					std::lock_guard accessGuard(task->accessMutex);
 
-				task->status = AsyncTaskStatus::Done;
+					task->status = AsyncTaskStatus::Done;
 
-				if ((tld->exceptionStorage = task->callback->onAccepted(task->socket))) {
-					WakeAllConditionVariable(&tld->ioService->terminateNotifyConditionVar);
-					return -1;
+					if ((tld->exceptionStorage = task->callback->onAccepted(task->socket))) {
+						WakeAllConditionVariable(&tld->ioService->terminateNotifyConditionVar);
+						return -1;
+					}
+					break;
 				}
-
-				tld->ioService->currentTasks.remove(task);
-				break;
 			}
-		}
+		} else
+			tld->ioService->currentTasksMutex.unlock();
 	}
 
 	WakeAllConditionVariable(&tld->ioService->terminateNotifyConditionVar);
@@ -95,11 +105,10 @@ NETKNOT_API Win32IOService::Win32IOService(peff::Alloc *selfAllocator)
 	: selfAllocator(selfAllocator),
 	  threadLocalData(selfAllocator),
 	  currentTasks(selfAllocator) {
+	InitializeConditionVariable(&terminateNotifyConditionVar);
 }
 
 NETKNOT_API Win32IOService::~Win32IOService() {
-	DeleteCriticalSection(&terminateNotifyCriticalSection);
-
 	WSACleanup();
 }
 
@@ -124,6 +133,8 @@ NETKNOT_API ExceptionPointer Win32IOService::run() {
 		NETKNOT_RETURN_IF_EXCEPT(std::move(i.exceptionStorage));
 	}
 
+	_isRunning = true;
+
 	for (auto &i : threadLocalData) {
 		ResumeThread(i.hThread);
 	}
@@ -133,8 +144,6 @@ NETKNOT_API ExceptionPointer Win32IOService::run() {
 	for (auto &i : threadLocalData) {
 		NETKNOT_RETURN_IF_EXCEPT(std::move(i.exceptionStorage));
 	}
-
-	_isRunning = true;
 
 	return {};
 }
@@ -161,11 +170,7 @@ NETKNOT_API ExceptionPointer Win32IOService::stop() {
 }
 
 NETKNOT_API ExceptionPointer Win32IOService::postAsyncTask(AsyncTask *task) noexcept {
-	peff::ScopeGuard currentTasksCriticalSectionGuard([this]() noexcept {
-		LeaveCriticalSection(&currentTasksCriticalSection);
-	});
-
-	EnterCriticalSection(&currentTasksCriticalSection);
+	std::lock_guard currentTasksGuard(currentTasksMutex);
 
 	if (!currentTasks.insert(task))
 		return OutOfMemoryError::alloc();
@@ -175,7 +180,7 @@ NETKNOT_API ExceptionPointer Win32IOService::postAsyncTask(AsyncTask *task) noex
 
 NETKNOT_API ExceptionPointer Win32IOService::createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType, Socket *&socketOut) noexcept {
 	std::unique_ptr<Win32Socket, peff::DeallocableDeleter<Win32Socket>> p(
-		peff::allocAndConstruct<Win32Socket>(allocator, alignof(Win32Socket), this, addressFamily, socketType));
+		peff::allocAndConstruct<Win32Socket>(allocator, alignof(Win32Socket), this, allocator, addressFamily, socketType));
 
 	if (!p)
 		return OutOfMemoryError::alloc();
@@ -278,7 +283,7 @@ ExceptionPointer Win32IOService::detranslateAddress(peff::Alloc *allocator, cons
 	std::terminate();
 }
 
-NETKNOT_API ExceptionPointer netknot::lastErrorToExcept(peff::Alloc* allocator, DWORD errorCode) noexcept {
+NETKNOT_API ExceptionPointer netknot::lastErrorToExcept(peff::Alloc *allocator, DWORD errorCode) noexcept {
 	switch (errorCode) {
 		case ERROR_OUTOFMEMORY:
 			return OutOfMemoryError::alloc();
@@ -288,7 +293,7 @@ NETKNOT_API ExceptionPointer netknot::lastErrorToExcept(peff::Alloc* allocator, 
 	std::terminate();
 }
 
-NETKNOT_API ExceptionPointer netknot::wsaLastErrorToExcept(peff::Alloc* allocator, DWORD errorCode) noexcept {
+NETKNOT_API ExceptionPointer netknot::wsaLastErrorToExcept(peff::Alloc *allocator, DWORD errorCode) noexcept {
 	switch (errorCode) {
 		case WSA_NOT_ENOUGH_MEMORY:
 			return OutOfMemoryError::alloc();
@@ -380,11 +385,6 @@ NETKNOT_API ExceptionPointer netknot::createIOCPIOService(IOService *&ioServiceO
 		++idxWorkerThread;
 	}
 
-	InitializeCriticalSection(&ioService->terminateNotifyCriticalSection);
-	InitializeConditionVariable(&ioService->terminateNotifyConditionVar);
-
-	InitializeCriticalSection(&ioService->currentTasksCriticalSection);
-
 	if (!((ioService->iocpCompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0)))) {
 		std::terminate();
 	}
@@ -396,6 +396,6 @@ NETKNOT_API ExceptionPointer netknot::createIOCPIOService(IOService *&ioServiceO
 	return {};
 }
 
-NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService*& ioServiceOut, const IOServiceCreationParams& params) noexcept {
+NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService *&ioServiceOut, const IOServiceCreationParams &params) noexcept {
 	return createIOCPIOService(ioServiceOut, params);
 }

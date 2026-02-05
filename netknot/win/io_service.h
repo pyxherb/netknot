@@ -53,7 +53,7 @@ namespace netknot {
 		CRITICAL_SECTION terminateNotifyCriticalSection;
 		CONDITION_VARIABLE terminateNotifyConditionVar;
 
-		CRITICAL_SECTION currentTasksCriticalSection;
+		std::mutex currentTasksMutex;
 		peff::Set<peff::RcObjectPtr<AsyncTask>> currentTasks;
 
 		peff::RcObjectPtr<peff::Alloc> selfAllocator;

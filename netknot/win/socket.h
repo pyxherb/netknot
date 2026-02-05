@@ -14,6 +14,7 @@ namespace netknot {
 
 	class Win32ReadAsyncTask : public ReadAsyncTask {
 	public:
+		std::mutex accessMutex;
 		peff::RcObjectPtr<peff::Alloc> selfAllocator;
 		AsyncTaskStatus status = AsyncTaskStatus::Ready;
 		Win32Socket *socket;
@@ -40,6 +41,7 @@ namespace netknot {
 
 	class Win32WriteAsyncTask : public WriteAsyncTask {
 	public:
+		std::mutex accessMutex;
 		peff::RcObjectPtr<peff::Alloc> selfAllocator;
 		AsyncTaskStatus status = AsyncTaskStatus::Ready;
 		Win32Socket *socket;
@@ -63,6 +65,7 @@ namespace netknot {
 
 	class Win32AcceptAsyncTask : public AcceptAsyncTask {
 	public:
+		std::mutex accessMutex;
 		peff::RcObjectPtr<peff::Alloc> selfAllocator;
 		AsyncTaskStatus status = AsyncTaskStatus::Ready;
 		Win32Socket *socket;
@@ -88,7 +91,7 @@ namespace netknot {
 		Win32IOService *ioService;
 		peff::UUID addressFamily;
 
-		NETKNOT_API Win32Socket(Win32IOService *ioService, const peff::UUID &addressFamily, const peff::UUID &socketTypeId);
+		NETKNOT_API Win32Socket(Win32IOService *ioService, peff::Alloc *selfAllocator, const peff::UUID &addressFamily, const peff::UUID &socketTypeId);
 		NETKNOT_API virtual ~Win32Socket();
 
 		NETKNOT_API virtual void dealloc() noexcept override;

@@ -39,5 +39,5 @@ install(TARGETS netknot netknot_static
     LIBRARY DESTINATION lib/
     ARCHIVE DESTINATION lib/
     RUNTIME DESTINATION bin
-    PUBLIC_HEADER DESTINATION include/peff/base/
+    PUBLIC_HEADER DESTINATION include/netknot/
 )

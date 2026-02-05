@@ -35,7 +35,7 @@ namespace netknot {
 		}
 
 		NETKNOT_FORCEINLINE operator bool() {
-			return buffer;
+			return (bool)buffer;
 		}
 	};
 }
