@@ -464,7 +464,7 @@ netknot::ExceptionPointer HttpWriteAsyncCallback::onStatusChanged(netknot::Write
 			break;
 		}
 		default:
-			break;
+			std::terminate();
 	}
 
 	return {};

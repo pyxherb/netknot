@@ -110,6 +110,9 @@ namespace netknot {
 		NETKNOT_API virtual ExceptionPointer writeAsync(peff::Alloc *allocator, const RcBufferRef &buffer, WriteAsyncCallback *callback, WriteAsyncTask *&asyncTaskOut) override;
 		NETKNOT_API virtual ExceptionPointer acceptAsync(peff::Alloc *allocator, AcceptAsyncCallback *callback, AcceptAsyncTask *&asyncTaskOut) override;
 	};
+
+	NETKNOT_API Win32IOCPOverlapped *allocOverlapped(peff::Alloc *allocator, size_t addrSize, const RcBufferRef &buffer, AsyncTask *asyncTask);
+	NETKNOT_API void releaseOverlapped(peff::Alloc *allocator, Win32IOCPOverlapped *overlapped);
 }
 
 #endif

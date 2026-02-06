@@ -38,6 +38,7 @@ NETKNOT_API DWORD WINAPI Win32IOService::_workerThreadProc(LPVOID lpThreadParame
 		tld->ioService->currentTasksMutex.lock();
 		if (tld->ioService->currentTasks.contains(iocpOverlapped->asyncTask)) {
 			tld->ioService->currentTasks.remove(iocpOverlapped->asyncTask);
+			rawTask->decRef(0);
 
 			tld->ioService->currentTasksMutex.unlock();
 
@@ -90,7 +91,6 @@ NETKNOT_API DWORD WINAPI Win32IOService::_workerThreadProc(LPVOID lpThreadParame
 			tld->ioService->currentTasksMutex.unlock();
 	}
 
-	WakeAllConditionVariable(&tld->ioService->terminateNotifyConditionVar);
 	return 0;
 }
 
@@ -106,6 +106,7 @@ NETKNOT_API Win32IOService::Win32IOService(peff::Alloc *selfAllocator)
 	  threadLocalData(selfAllocator),
 	  currentTasks(selfAllocator) {
 	InitializeConditionVariable(&terminateNotifyConditionVar);
+	InitializeCriticalSection(&terminateNotifyCriticalSection);
 }
 
 NETKNOT_API Win32IOService::~Win32IOService() {
@@ -123,6 +124,7 @@ NETKNOT_API Win32IOService *Win32IOService::alloc(peff::Alloc *selfAllocator) {
 }
 
 NETKNOT_API void Win32IOService::dealloc() noexcept {
+	peff::destroyAndRelease<Win32IOService>(selfAllocator.get(), this, alignof(Win32IOService));
 }
 
 NETKNOT_API ExceptionPointer Win32IOService::run() {
@@ -142,17 +144,6 @@ NETKNOT_API ExceptionPointer Win32IOService::run() {
 	SleepConditionVariableCS(&terminateNotifyConditionVar, &terminateNotifyCriticalSection, INFINITE);
 
 	for (auto &i : threadLocalData) {
-		NETKNOT_RETURN_IF_EXCEPT(std::move(i.exceptionStorage));
-	}
-
-	return {};
-}
-
-NETKNOT_API ExceptionPointer Win32IOService::stop() {
-	if (!_isRunning)
-		std::terminate();
-
-	for (auto &i : threadLocalData) {
 		PostQueuedCompletionStatus(iocpCompletionPort, 0, 0, nullptr);
 	}
 
@@ -164,7 +155,16 @@ NETKNOT_API ExceptionPointer Win32IOService::stop() {
 		NETKNOT_RETURN_IF_EXCEPT(std::move(i.exceptionStorage));
 	}
 
+	return {};
+}
+
+NETKNOT_API ExceptionPointer Win32IOService::stop() {
+	if (!_isRunning)
+		std::terminate();
+
 	_isRunning = false;
+
+	WakeAllConditionVariable(&terminateNotifyConditionVar);
 
 	return {};
 }

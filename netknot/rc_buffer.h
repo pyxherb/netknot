@@ -24,6 +24,9 @@ namespace netknot {
 		size_t offset;
 		size_t size;
 
+		NETKNOT_FORCEINLINE RcBufferRef() noexcept : buffer({}), offset(0), size(0) {
+		}
+
 		NETKNOT_FORCEINLINE RcBufferRef(RcBuffer *buffer) noexcept : buffer(buffer), offset(0), size(buffer->size) {
 		}
 

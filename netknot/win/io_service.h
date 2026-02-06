@@ -26,6 +26,7 @@ namespace netknot {
 		WSABUF buf;
 		size_t addrSize;
 		AsyncTask *asyncTask;
+		RcBuffer *rcBuffer;
 		DWORD szOperated;
 		DWORD flags;
 	};
