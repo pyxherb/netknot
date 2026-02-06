@@ -124,6 +124,8 @@ int main() {
 			if ((e = ioService->run()))
 				std::terminate();
 		}
+
+		puts("");
 	}
 
 	return 0;

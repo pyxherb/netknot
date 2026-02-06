@@ -216,7 +216,7 @@ NETKNOT_API ExceptionPointer Win32Socket::writeAsync(peff::Alloc *allocator, con
 
 	if (!task)
 		return OutOfMemoryError::alloc();
-	
+
 	Win32IOCPOverlapped *overlapped;
 
 	if (!(overlapped = (Win32IOCPOverlapped *)allocOverlapped(allocator, 0, buffer, task.get()))) {
@@ -277,7 +277,7 @@ NETKNOT_API ExceptionPointer Win32Socket::acceptAsync(peff::Alloc *allocator, Ac
 	task->socket = newSocket.get();
 	task->callback = callback;
 
-	if (!AcceptEx(socket, newSocket->socket, overlapped + 1, 0, (DWORD)overlapped->addrSize, (DWORD)overlapped->addrSize, &overlapped->szOperated, overlapped)) {
+	if (!AcceptEx(socket, newSocket->socket, &overlapped[1], 0, (DWORD)overlapped->addrSize, (DWORD)overlapped->addrSize, &overlapped->szOperated, overlapped)) {
 		int lastError = WSAGetLastError();
 		if (lastError != WSA_IO_PENDING)
 			return wsaLastErrorToExcept(ioService->selfAllocator.get(), lastError);
@@ -292,10 +292,10 @@ NETKNOT_API ExceptionPointer Win32Socket::acceptAsync(peff::Alloc *allocator, Ac
 	return {};
 }
 
-NETKNOT_API Win32IOCPOverlapped* netknot::allocOverlapped(peff::Alloc* allocator, size_t addrSize, const RcBufferRef& buffer, AsyncTask* asyncTask) {
+NETKNOT_API Win32IOCPOverlapped *netknot::allocOverlapped(peff::Alloc *allocator, size_t addrSize, const RcBufferRef &buffer, AsyncTask *asyncTask) {
 	Win32IOCPOverlapped *overlapped = nullptr;
 
-	if (!(overlapped = (Win32IOCPOverlapped *)allocator->alloc(sizeof(Win32IOCPOverlapped) + addrSize, alignof(Win32IOCPOverlapped)))) {
+	if (!(overlapped = (Win32IOCPOverlapped *)allocator->alloc(sizeof(Win32IOCPOverlapped) + addrSize /* Don't know why it just needs it, 16 more bytes for storage. */ + 16, alignof(Win32IOCPOverlapped)))) {
 		return nullptr;
 	}
 	memset(overlapped, 0, sizeof(Win32IOCPOverlapped) + addrSize);
@@ -322,6 +322,6 @@ NETKNOT_API void netknot::releaseOverlapped(peff::Alloc *allocator, Win32IOCPOve
 		if (overlapped->rcBuffer)
 			overlapped->rcBuffer->decRef(0);
 		overlapped->asyncTask->decRef(0);
-		allocator->release(overlapped, sizeof(Win32IOCPOverlapped) + overlapped->addrSize, alignof(Win32IOCPOverlapped));
+		allocator->release(overlapped, sizeof(Win32IOCPOverlapped) + overlapped->addrSize + 16, alignof(Win32IOCPOverlapped));
 	}
 }
