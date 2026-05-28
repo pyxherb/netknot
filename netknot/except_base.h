@@ -37,6 +37,7 @@ namespace netknot {
 			other._ptr = nullptr;
 		}
 		NETKNOT_FORCEINLINE ExceptionPointer &operator=(ExceptionPointer &&other) noexcept {
+			unwrap();
 			_ptr = other._ptr;
 			other._ptr = nullptr;
 			return *this;
@@ -77,10 +78,11 @@ namespace netknot {
 }
 
 #define NETKNOT_UNWRAP_EXCEPT(expr) (expr).unwrap()
-#define NETKNOT_RETURN_IF_EXCEPT(expr)                 \
-	if (netknot::ExceptionPointer _ = (expr); (bool)_) \
-		return _;                                      \
-	else
+#define NETKNOT_RETURN_IF_EXCEPT(expr)                     \
+	do {                                                   \
+		if (netknot::ExceptionPointer _ = (expr); (bool)_) \
+			return _;                                      \
+	} while (0)
 #define NETKNOT_RETURN_IF_EXCEPT_WITH_LVAR(name, expr) \
 	if ((bool)(name = (expr)))                         \
 		return name;                                   \

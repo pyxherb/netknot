@@ -2,85 +2,85 @@
 
 using namespace netknot;
 
-NETKNOT_API UnixReadAsyncTask::UnixReadAsyncTask(peff::Alloc *allocator, UnixSocket *socket, const RcBufferRef &bufferRef) : selfAllocator(allocator), socket(socket), bufferRef(bufferRef) {
+NETKNOT_API UnixReadAsyncTask::UnixReadAsyncTask(peff::Alloc *allocator, UnixSocket *socket, const RcBufferRef &bufferRef) : self_allocator(allocator), socket(socket), bufferRef(bufferRef) {
 }
 
 NETKNOT_API UnixReadAsyncTask::~UnixReadAsyncTask() {
 }
 
-NETKNOT_API void UnixReadAsyncTask::onRefZero() noexcept {
-	peff::destroyAndRelease<UnixReadAsyncTask>(selfAllocator.get(), this, alignof(UnixReadAsyncTask));
+NETKNOT_API void UnixReadAsyncTask::on_ref_zero() noexcept {
+	peff::destroy_and_release<UnixReadAsyncTask>(self_allocator.get(), this, alignof(UnixReadAsyncTask));
 }
 
-NETKNOT_API AsyncTaskStatus UnixReadAsyncTask::getStatus() {
+NETKNOT_API AsyncTaskStatus UnixReadAsyncTask::get_status() {
 	return status;
 }
 
-NETKNOT_API ExceptionPointer &UnixReadAsyncTask::getException() {
-	return exceptPtr;
+NETKNOT_API ExceptionPointer &UnixReadAsyncTask::get_except() {
+	return except_ptr;
 }
 
-NETKNOT_API size_t UnixReadAsyncTask::getCurrentReadSize() {
-	return szRead;
+NETKNOT_API size_t UnixReadAsyncTask::get_cur_read_size() {
+	return sz_read;
 }
 
-NETKNOT_API size_t UnixReadAsyncTask::getExpectedReadSize() {
+NETKNOT_API size_t UnixReadAsyncTask::get_expected_read_size() {
 	return bufferRef.size;
 }
 
-NETKNOT_API char *UnixReadAsyncTask::getBuffer() {
+NETKNOT_API char *UnixReadAsyncTask::get_buffer() {
 	return bufferRef.buffer->data + bufferRef.offset;
 }
 
-NETKNOT_API RcBufferRef UnixReadAsyncTask::getBufferRef() {
+NETKNOT_API RcBufferRef UnixReadAsyncTask::get_buffer_ref() {
 	return bufferRef;
 }
 
-NETKNOT_API UnixWriteAsyncTask::UnixWriteAsyncTask(peff::Alloc *allocator, UnixSocket *socket, const RcBufferRef &bufferRef) : selfAllocator(allocator), socket(socket), bufferRef(bufferRef) {
+NETKNOT_API UnixWriteAsyncTask::UnixWriteAsyncTask(peff::Alloc *allocator, UnixSocket *socket, const RcBufferRef &bufferRef) : self_allocator(allocator), socket(socket), bufferRef(bufferRef) {
 }
 
 NETKNOT_API UnixWriteAsyncTask::~UnixWriteAsyncTask() {
 }
 
-NETKNOT_API void UnixWriteAsyncTask::onRefZero() noexcept {
-	peff::destroyAndRelease<UnixWriteAsyncTask>(selfAllocator.get(), this, alignof(UnixWriteAsyncTask));
+NETKNOT_API void UnixWriteAsyncTask::on_ref_zero() noexcept {
+	peff::destroy_and_release<UnixWriteAsyncTask>(self_allocator.get(), this, alignof(UnixWriteAsyncTask));
 }
 
-NETKNOT_API AsyncTaskStatus UnixWriteAsyncTask::getStatus() {
+NETKNOT_API AsyncTaskStatus UnixWriteAsyncTask::get_status() {
 	return status;
 }
 
-NETKNOT_API ExceptionPointer &UnixWriteAsyncTask::getException() {
-	return exceptPtr;
+NETKNOT_API ExceptionPointer &UnixWriteAsyncTask::get_except() {
+	return except_ptr;
 }
 
-NETKNOT_API size_t UnixWriteAsyncTask::getCurrentWrittenSize() {
+NETKNOT_API size_t UnixWriteAsyncTask::get_cur_written_size() {
 	return szWritten;
 }
 
-NETKNOT_API size_t UnixWriteAsyncTask::getExpectedWrittenSize() {
+NETKNOT_API size_t UnixWriteAsyncTask::get_expected_written_size() {
 	return bufferRef.size;
 }
 
-NETKNOT_API UnixAcceptAsyncTask::UnixAcceptAsyncTask(peff::Alloc *allocator, UnixSocket *socket, const peff::UUID &addressFamily) : selfAllocator(allocator), socket(socket), addressFamily(addressFamily) {
+NETKNOT_API UnixAcceptAsyncTask::UnixAcceptAsyncTask(peff::Alloc *allocator, UnixSocket *socket, const peff::UUID &address_family) : self_allocator(allocator), socket(socket), address_family(address_family) {
 }
 
 NETKNOT_API UnixAcceptAsyncTask::~UnixAcceptAsyncTask() {
 }
 
-NETKNOT_API void UnixAcceptAsyncTask::onRefZero() noexcept {
-	peff::destroyAndRelease<UnixAcceptAsyncTask>(selfAllocator.get(), this, alignof(UnixAcceptAsyncTask));
+NETKNOT_API void UnixAcceptAsyncTask::on_ref_zero() noexcept {
+	peff::destroy_and_release<UnixAcceptAsyncTask>(self_allocator.get(), this, alignof(UnixAcceptAsyncTask));
 }
 
-NETKNOT_API AsyncTaskStatus UnixAcceptAsyncTask::getStatus() {
+NETKNOT_API AsyncTaskStatus UnixAcceptAsyncTask::get_status() {
 	return status;
 }
 
-NETKNOT_API ExceptionPointer &UnixAcceptAsyncTask::getException() {
-	return exceptPtr;
+NETKNOT_API ExceptionPointer &UnixAcceptAsyncTask::get_except() {
+	return except_ptr;
 }
 
-NETKNOT_API UnixSocket::UnixSocket(UnixIOService *ioService, const peff::UUID &addressFamily, const peff::UUID &socketTypeId) : ioService(ioService), socket(socket), addressFamily(addressFamily), socketTypeId(socketTypeId) {
+NETKNOT_API UnixSocket::UnixSocket(UnixIOService *io_service, const peff::UUID &address_family, const peff::UUID &socketTypeId) : io_service(io_service), socket(socket), address_family(address_family), socketTypeId(socketTypeId) {
 }
 
 NETKNOT_API UnixSocket::~UnixSocket() {
@@ -89,7 +89,7 @@ NETKNOT_API UnixSocket::~UnixSocket() {
 }
 
 NETKNOT_API void UnixSocket::dealloc() noexcept {
-	peff::destroyAndRelease<UnixSocket>(selfAllocator.get(), this, alignof(UnixSocket));
+	peff::destroy_and_release<UnixSocket>(self_allocator.get(), this, alignof(UnixSocket));
 }
 
 NETKNOT_API void UnixSocket::close() {
@@ -162,29 +162,29 @@ NETKNOT_API ExceptionPointer UnixSocket::write(const char *buffer, size_t size, 
 
 NETKNOT_API ExceptionPointer UnixSocket::accept(peff::Alloc *allocator, Socket *&socketOut) {
 	socklen_t addrLen = 0;
-	int newSocket = ::accept(socket, NULL, &addrLen);
+	int new_socket = ::accept(socket, NULL, &addrLen);
 
-	if (newSocket < 0) {
+	if (new_socket < 0) {
 		// TODO: Handle the errors...
 		std::terminate();
 	}
 
 	std::unique_ptr<UnixSocket, peff::DeallocableDeleter<UnixSocket>> p(
-		peff::allocAndConstruct<UnixSocket>(allocator, alignof(UnixSocket), ioService, addressFamily, socketTypeId));
+		peff::alloc_and_construct<UnixSocket>(allocator, alignof(UnixSocket), io_service, address_family, socketTypeId));
 
 	if (!p)
 		return OutOfMemoryError::alloc();
 
-	p->socket = newSocket;
+	p->socket = new_socket;
 
 	socketOut = p.release();
 
 	return {};
 }
 
-NETKNOT_API ExceptionPointer UnixSocket::readAsync(peff::Alloc *allocator, const RcBufferRef &buffer, ReadAsyncCallback *callback, ReadAsyncTask *&asyncTaskOut) {
+NETKNOT_API ExceptionPointer UnixSocket::read_async(peff::Alloc *allocator, const RcBufferRef &buffer, ReadAsyncCallback *callback, ReadAsyncTask *&async_task_out) {
 	peff::RcObjectPtr<UnixReadAsyncTask> task(
-		peff::allocAndConstruct<UnixReadAsyncTask>(allocator, alignof(UnixReadAsyncTask), allocator, this, buffer));
+		peff::alloc_and_construct<UnixReadAsyncTask>(allocator, alignof(UnixReadAsyncTask), allocator, this, buffer));
 
 	if (!task)
 		return OutOfMemoryError::alloc();
@@ -193,17 +193,17 @@ NETKNOT_API ExceptionPointer UnixSocket::readAsync(peff::Alloc *allocator, const
 
 	task->callback = callback;
 
-	NETKNOT_RETURN_IF_EXCEPT(ioService->postAsyncTask(task.get()));
+	NETKNOT_RETURN_IF_EXCEPT(io_service->postAsyncTask(task.get()));
 
-	task->incRef(peff::acquireGlobalRcObjectPtrCounter());
-	asyncTaskOut = task.get();
+	task->inc_ref(peff::acquireGlobalRcObjectPtrCounter());
+	async_task_out = task.get();
 
 	return {};
 }
 
-NETKNOT_API ExceptionPointer UnixSocket::writeAsync(peff::Alloc *allocator, const RcBufferRef &buffer, WriteAsyncCallback *callback, WriteAsyncTask *&asyncTaskOut) {
+NETKNOT_API ExceptionPointer UnixSocket::write_async(peff::Alloc *allocator, const RcBufferRef &buffer, WriteAsyncCallback *callback, WriteAsyncTask *&async_task_out) {
 	std::unique_ptr<UnixWriteAsyncTask, AsyncTaskDeleter> task(
-		peff::allocAndConstruct<UnixWriteAsyncTask>(allocator, alignof(UnixWriteAsyncTask), allocator, this, buffer));
+		peff::alloc_and_construct<UnixWriteAsyncTask>(allocator, alignof(UnixWriteAsyncTask), allocator, this, buffer));
 
 	if (!task)
 		return OutOfMemoryError::alloc();
@@ -212,49 +212,49 @@ NETKNOT_API ExceptionPointer UnixSocket::writeAsync(peff::Alloc *allocator, cons
 
 	task->callback = callback;
 
-	NETKNOT_RETURN_IF_EXCEPT(ioService->postAsyncTask(task.get()));
+	NETKNOT_RETURN_IF_EXCEPT(io_service->postAsyncTask(task.get()));
 
-	task->incRef(peff::acquireGlobalRcObjectPtrCounter());
-	asyncTaskOut = task.release();
+	task->inc_ref(peff::acquireGlobalRcObjectPtrCounter());
+	async_task_out = task.release();
 
 	return {};
 }
 
-NETKNOT_API ExceptionPointer UnixSocket::acceptAsync(peff::Alloc *allocator, AcceptAsyncCallback *callback, AcceptAsyncTask *&asyncTaskOut) {
+NETKNOT_API ExceptionPointer UnixSocket::accept_async(peff::Alloc *allocator, AcceptAsyncCallback *callback, AcceptAsyncTask *&async_task_out) {
 	std::unique_ptr<UnixAcceptAsyncTask, AsyncTaskDeleter> task(
-		peff::allocAndConstruct<UnixAcceptAsyncTask>(allocator, alignof(UnixAcceptAsyncTask), allocator, this, addressFamily));
+		peff::alloc_and_construct<UnixAcceptAsyncTask>(allocator, alignof(UnixAcceptAsyncTask), allocator, this, address_family));
 
 	if (!task)
 		return OutOfMemoryError::alloc();
 
-	std::unique_ptr<UnixSocket, peff::DeallocableDeleter<UnixSocket>> newSocket;
+	std::unique_ptr<UnixSocket, peff::DeallocableDeleter<UnixSocket>> new_socket;
 	{
 		Socket *s;
 
-		NETKNOT_RETURN_IF_EXCEPT(ioService->createSocket(allocator, addressFamily, socketTypeId, s));
+		NETKNOT_RETURN_IF_EXCEPT(io_service->createSocket(allocator, address_family, socketTypeId, s));
 
-		newSocket = std::unique_ptr<UnixSocket, peff::DeallocableDeleter<UnixSocket>>((UnixSocket *)s);
+		new_socket = std::unique_ptr<UnixSocket, peff::DeallocableDeleter<UnixSocket>>((UnixSocket *)s);
 	}
 
-	size_t compiledAddrSize;
+	size_t compiled_addr_size;
 
 	{
-		Address addr(addressFamily);
+		Address addr(address_family);
 
-		ioService->translateAddress(nullptr, &addr, nullptr, &compiledAddrSize).unwrap();
+		io_service->translateAddress(nullptr, &addr, nullptr, &compiled_addr_size).unwrap();
 	}
 
 	// TODO: Implement it.
 
-	task->socket = newSocket.get();
+	task->socket = new_socket.get();
 	task->callback = callback;
 
-	NETKNOT_RETURN_IF_EXCEPT(ioService->postAsyncTask(task.get()));
+	NETKNOT_RETURN_IF_EXCEPT(io_service->postAsyncTask(task.get()));
 
-	newSocket.release();
+	new_socket.release();
 
-	task->incRef(peff::acquireGlobalRcObjectPtrCounter());
-	asyncTaskOut = task.release();
+	task->inc_ref(peff::acquireGlobalRcObjectPtrCounter());
+	async_task_out = task.release();
 
 	return {};
 }

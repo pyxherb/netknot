@@ -25,15 +25,15 @@ namespace netknot {
 		[[nodiscard]] virtual ExceptionPointer run() = 0;
 		[[nodiscard]] virtual ExceptionPointer stop() = 0;
 
-		virtual ExceptionPointer postAsyncTask(AsyncTask *task) noexcept = 0;
+		virtual ExceptionPointer post_async_task(AsyncTask *task) noexcept = 0;
 
-		virtual ExceptionPointer createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType, Socket *&socketOut) noexcept = 0;
+		virtual ExceptionPointer create_socket(peff::Alloc *allocator, const peff::UUID &address_family, const peff::UUID &socketType, Socket *&socketOut) noexcept = 0;
 
-		virtual ExceptionPointer translateAddress(peff::Alloc *allocator, const Address *address, TranslatedAddress **compiledAddressOut, size_t *compiledAddressSizeOut = nullptr) noexcept = 0;
-		virtual ExceptionPointer detranslateAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const TranslatedAddress *address, Address &addressOut) noexcept = 0;
+		virtual ExceptionPointer translate_addr(peff::Alloc *allocator, const Address *address, TranslatedAddress **compiledAddressOut, size_t *compiledAddressSizeOut = nullptr) noexcept = 0;
+		virtual ExceptionPointer detranslate_addr(peff::Alloc *allocator, const peff::UUID &address_family, const TranslatedAddress *address, Address &addressOut) noexcept = 0;
 	};
 
-	ExceptionPointer createDefaultIOService(IOService *&ioServiceOut, const IOServiceCreationParams &params) noexcept;
+	ExceptionPointer create_default_io_service(IOService *&ioServiceOut, const IOServiceCreationParams &params) noexcept;
 }
 
 #endif

@@ -13,11 +13,11 @@
 namespace netknot {
 	class UnixTranslatedAddress : public TranslatedAddress {
 	public:
-		peff::RcObjectPtr<peff::Alloc> selfAllocator;
+		peff::RcObjectPtr<peff::Alloc> self_allocator;
 		char *data = nullptr;
 		size_t size = 0;
 
-		NETKNOT_API UnixTranslatedAddress(peff::Alloc *selfAllocator);
+		NETKNOT_API UnixTranslatedAddress(peff::Alloc *self_allocator);
 		NETKNOT_API virtual ~UnixTranslatedAddress();
 
 		NETKNOT_API virtual void dealloc() noexcept override;
@@ -31,7 +31,7 @@ namespace netknot {
 		NETKNOT_API static void *_workerThreadProc(void *lpThreadParameter);
 
 		struct ThreadLocalData {
-			UnixIOService *ioService;
+			UnixIOService *io_service;
 			peff::Option<pthread_t> hThread;
 			pthread_cond_t startCond = PTHREAD_COND_INITIALIZER;
 			pthread_mutex_t startMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -40,7 +40,7 @@ namespace netknot {
 			ExceptionPointer exceptionStorage;
 
 			NETKNOT_FORCEINLINE ThreadLocalData(ThreadLocalData &&) = default;
-			NETKNOT_FORCEINLINE ThreadLocalData(UnixIOService *ioService, size_t threadId, peff::Alloc *allocator) : ioService(ioService), threadId(threadId) {
+			NETKNOT_FORCEINLINE ThreadLocalData(UnixIOService *io_service, size_t threadId, peff::Alloc *allocator) : io_service(io_service), threadId(threadId) {
 			}
 			NETKNOT_API ~ThreadLocalData();
 		};
@@ -48,17 +48,17 @@ namespace netknot {
 		pthread_mutex_t terminateNotifyMutex = PTHREAD_MUTEX_INITIALIZER;
 		pthread_cond_t terminateNotifyConditionVar = PTHREAD_COND_INITIALIZER;
 
-		pthread_mutex_t currentTasksMutex = PTHREAD_MUTEX_INITIALIZER;
-		peff::Set<peff::RcObjectPtr<AsyncTask>> currentTasks;
+		pthread_mutex_t cur_tasks_mutex = PTHREAD_MUTEX_INITIALIZER;
+		peff::Set<peff::RcObjectPtr<AsyncTask>> cur_tasks;
 
-		peff::RcObjectPtr<peff::Alloc> selfAllocator;
+		peff::RcObjectPtr<peff::Alloc> self_allocator;
 
 		peff::DynArray<ThreadLocalData> threadLocalData;
 
-		NETKNOT_API UnixIOService(peff::Alloc *selfAllocator);
+		NETKNOT_API UnixIOService(peff::Alloc *self_allocator);
 		NETKNOT_API ~UnixIOService();
 
-		NETKNOT_API static UnixIOService *alloc(peff::Alloc *selfAllocator);
+		NETKNOT_API static UnixIOService *alloc(peff::Alloc *self_allocator);
 
 		NETKNOT_API virtual void dealloc() noexcept override;
 
@@ -67,10 +67,10 @@ namespace netknot {
 
 		NETKNOT_API virtual ExceptionPointer postAsyncTask(AsyncTask *task) noexcept override;
 
-		NETKNOT_API virtual ExceptionPointer createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType, Socket *&socketOut) noexcept override;
+		NETKNOT_API virtual ExceptionPointer createSocket(peff::Alloc *allocator, const peff::UUID &address_family, const peff::UUID &socketType, Socket *&socketOut) noexcept override;
 
 		NETKNOT_API virtual ExceptionPointer translateAddress(peff::Alloc *allocator, const Address *address, TranslatedAddress **compiledAddressOut, size_t *compiledAddressSizeOut = nullptr) noexcept override;
-		NETKNOT_API virtual ExceptionPointer detranslateAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const TranslatedAddress *address, Address &addressOut) noexcept override;
+		NETKNOT_API virtual ExceptionPointer detranslateAddress(peff::Alloc *allocator, const peff::UUID &address_family, const TranslatedAddress *address, Address &addressOut) noexcept override;
 	};
 }
 

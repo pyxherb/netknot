@@ -57,16 +57,16 @@ int main() {
 #ifdef _MSC_VER
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
-	peff::StdAlloc myAlloc;
+	peff::StdAlloc my_allocator;
 	{
 		netknot::ExceptionPointer e;
 
-		peff::UniquePtr<netknot::IOService, peff::DeallocableDeleter<netknot::IOService>> ioService;
+		peff::UniquePtr<netknot::IOService, peff::DeallocableDeleter<netknot::IOService>> io_service;
 		{
-			netknot::IOServiceCreationParams params(&myAlloc, &myAlloc);
+			netknot::IOServiceCreationParams params(&my_allocator, &my_allocator);
 			params.nWorkerThreads = 1;
 
-			if ((e = netknot::createDefaultIOService(ioService.getRef(), params))) {
+			if ((e = netknot::create_default_io_service(io_service.get_ref(), params))) {
 				std::terminate();
 			}
 		}
@@ -75,14 +75,14 @@ int main() {
 		{
 			netknot::IPv4Address addr(0, 0, 0, 0, 8080);
 
-			if ((e = ioService->translateAddress(&myAlloc, &addr, compiledAddr.getAddressOf()))) {
+			if ((e = io_service->translate_addr(&my_allocator, &addr, compiledAddr.get_addr()))) {
 				std::terminate();
 			}
 		}
 
 		peff::UniquePtr<netknot::Socket, peff::DeallocableDeleter<netknot::Socket>> socket;
 		{
-			if ((e = ioService->createSocket(&myAlloc, netknot::ADDRFAM_IPV4, netknot::SOCKET_TCP, socket.getRef()))) {
+			if ((e = io_service->create_socket(&my_allocator, netknot::ADDRFAM_IPV4, netknot::SOCKET_TCP, socket.get_ref()))) {
 				std::terminate();
 			}
 		}
@@ -96,32 +96,32 @@ int main() {
 		}
 
 		{
-			http::HttpServer httpServer(&myAlloc, ioService.get(), socket.release());
+			http::HttpServer http_server(&my_allocator, io_service.get(), socket.release());
 
 			peff::RcObjectPtr<http::HttpAcceptAsyncCallback> callback;
 
-			if (!(callback = peff::allocAndConstruct<http::HttpAcceptAsyncCallback>(&myAlloc, alignof(http::HttpAcceptAsyncCallback), &httpServer, &myAlloc)))
+			if (!(callback = peff::alloc_and_construct<http::HttpAcceptAsyncCallback>(&my_allocator, alignof(http::HttpAcceptAsyncCallback), &http_server, &my_allocator)))
 				std::terminate();
 
-			peff::RcObjectPtr<netknot::AcceptAsyncTask> acceptAsyncTask;
-			if ((e = httpServer.serverSocket->acceptAsync(&myAlloc, callback.get(), acceptAsyncTask.getRef()))) {
+			peff::RcObjectPtr<netknot::AcceptAsyncTask> accept_async_task;
+			if ((e = http_server.server_socket->accept_async(&my_allocator, callback.get(), accept_async_task.get_ref()))) {
 				std::terminate();
 			}
 
-			peff::UniquePtr<http::HttpRequestHandler, peff::DeallocableDeleter<http::HttpRequestHandler>> stopGetHandler = http::allocFnHttpRequestHandler(
-				&myAlloc,
+			peff::UniquePtr<http::HttpRequestHandler, peff::DeallocableDeleter<http::HttpRequestHandler>> stop_get_handler = http::allocFnHttpRequestHandler(
+				&my_allocator,
 				"GET",
 				[](const http::HttpURLHandlerState &state) -> netknot::ExceptionPointer {
-					return state.httpServer->ioService->stop();
+					return state.http_server->io_service->stop();
 				});
-			if (!stopGetHandler)
+			if (!stop_get_handler)
 				std::terminate();
 
-			if ((e = httpServer.registerHandler("/stop", stopGetHandler.release()))) {
+			if ((e = http_server.register_handler("/stop", stop_get_handler.release()))) {
 				std::terminate();
 			}
 
-			if ((e = ioService->run()))
+			if ((e = io_service->run()))
 				std::terminate();
 		}
 

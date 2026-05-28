@@ -13,9 +13,9 @@ namespace netknot {
 		SOCKET_UDP = PEFF_UUID(1b18418c, d36a, 4ed0, a135, 36dc249824db);
 
 	struct Address {
-		peff::UUID addressFamily;
+		peff::UUID address_family;
 
-		NETKNOT_FORCEINLINE Address(const peff::UUID &addressFamily) : addressFamily(addressFamily) {}
+		NETKNOT_FORCEINLINE Address(const peff::UUID &address_family) : address_family(address_family) {}
 	};
 
 	struct IPv4Address : public Address {
@@ -50,39 +50,39 @@ namespace netknot {
 
 	class AsyncTask {
 	private:
-		std::atomic_size_t _refCount = 0;
-		AsyncTaskType _taskType;
+		std::atomic_size_t _ref_count = 0;
+		AsyncTaskType _task_type;
 
 	public:
 		NETKNOT_API AsyncTask(AsyncTaskType taskType);
 		NETKNOT_API ~AsyncTask();
 
-		virtual void onRefZero() noexcept = 0;
+		virtual void on_ref_zero() noexcept = 0;
 
-		NETKNOT_FORCEINLINE size_t incRef(size_t globalRc) noexcept {
-			return ++_refCount;
+		NETKNOT_FORCEINLINE size_t inc_ref(size_t globalRc) noexcept {
+			return ++_ref_count;
 		}
 
-		NETKNOT_FORCEINLINE size_t decRef(size_t globalRc) noexcept {
-			if (!--_refCount) {
-				onRefZero();
+		NETKNOT_FORCEINLINE size_t dec_ref(size_t globalRc) noexcept {
+			if (!--_ref_count) {
+				on_ref_zero();
 				return 0;
 			}
 
-			return _refCount;
+			return _ref_count;
 		}
 
-		virtual AsyncTaskStatus getStatus() = 0;
-		virtual ExceptionPointer &getException() = 0;
+		virtual AsyncTaskStatus get_status() = 0;
+		virtual ExceptionPointer &get_except() = 0;
 
-		NETKNOT_FORCEINLINE AsyncTaskType getTaskType() const noexcept {
-			return _taskType;
+		NETKNOT_FORCEINLINE AsyncTaskType get_task_type() const noexcept {
+			return _task_type;
 		}
 	};
 
 	struct AsyncTaskDeleter {
 		NETKNOT_FORCEINLINE void operator()(AsyncTask *task) const noexcept {
-			task->onRefZero();
+			task->on_ref_zero();
 		}
 	};
 
@@ -91,10 +91,10 @@ namespace netknot {
 		NETKNOT_API ReadAsyncTask();
 		NETKNOT_API virtual ~ReadAsyncTask();
 
-		virtual size_t getCurrentReadSize() = 0;
-		virtual size_t getExpectedReadSize() = 0;
-		virtual char *getBuffer() = 0;
-		virtual RcBufferRef getBufferRef() = 0;
+		virtual size_t get_cur_read_size() = 0;
+		virtual size_t get_expected_read_size() = 0;
+		virtual char *get_buffer() = 0;
+		virtual RcBufferRef get_buffer_ref() = 0;
 	};
 
 	class WriteAsyncTask : public AsyncTask {
@@ -102,8 +102,8 @@ namespace netknot {
 		NETKNOT_API WriteAsyncTask();
 		NETKNOT_API virtual ~WriteAsyncTask();
 
-		virtual size_t getCurrentWrittenSize() = 0;
-		virtual size_t getExpectedWrittenSize() = 0;
+		virtual size_t get_cur_written_size() = 0;
+		virtual size_t get_expected_written_size() = 0;
 	};
 
 	class AcceptAsyncTask : public AsyncTask {
@@ -114,82 +114,82 @@ namespace netknot {
 
 	class ReadAsyncCallback {
 	private:
-		std::atomic_size_t _refCount = 0;
+		std::atomic_size_t _ref_count = 0;
 
 	public:
 		NETKNOT_API ReadAsyncCallback();
 		NETKNOT_API virtual ~ReadAsyncCallback();
 
-		virtual void onRefZero() noexcept = 0;
+		virtual void on_ref_zero() noexcept = 0;
 
-		NETKNOT_FORCEINLINE size_t incRef(size_t globalRc) noexcept {
-			return ++_refCount;
+		NETKNOT_FORCEINLINE size_t inc_ref(size_t globalRc) noexcept {
+			return ++_ref_count;
 		}
 
-		NETKNOT_FORCEINLINE size_t decRef(size_t globalRc) noexcept {
-			if (!--_refCount) {
-				onRefZero();
+		NETKNOT_FORCEINLINE size_t dec_ref(size_t globalRc) noexcept {
+			if (!--_ref_count) {
+				on_ref_zero();
 				return 0;
 			}
 
-			return _refCount;
+			return _ref_count;
 		}
 
-		virtual ExceptionPointer onStatusChanged(ReadAsyncTask *task) = 0;
+		virtual ExceptionPointer on_status_changed(ReadAsyncTask *task) = 0;
 	};
 
 	class WriteAsyncCallback {
 	private:
-		std::atomic_size_t _refCount = 0;
+		std::atomic_size_t _ref_count = 0;
 
 	public:
 		NETKNOT_API WriteAsyncCallback();
 		NETKNOT_API virtual ~WriteAsyncCallback();
 
-		virtual void onRefZero() noexcept = 0;
+		virtual void on_ref_zero() noexcept = 0;
 
-		NETKNOT_FORCEINLINE size_t incRef(size_t globalRc) noexcept {
-			return ++_refCount;
+		NETKNOT_FORCEINLINE size_t inc_ref(size_t globalRc) noexcept {
+			return ++_ref_count;
 		}
 
-		NETKNOT_FORCEINLINE size_t decRef(size_t globalRc) noexcept {
-			if (!--_refCount) {
-				onRefZero();
+		NETKNOT_FORCEINLINE size_t dec_ref(size_t globalRc) noexcept {
+			if (!--_ref_count) {
+				on_ref_zero();
 				return 0;
 			}
 
-			return _refCount;
+			return _ref_count;
 		}
 
-		virtual ExceptionPointer onStatusChanged(WriteAsyncTask *task) = 0;
+		virtual ExceptionPointer on_status_changed(WriteAsyncTask *task) = 0;
 	};
 
 	class Socket;
 
 	class AcceptAsyncCallback {
 	private:
-		std::atomic_size_t _refCount = 0;
+		std::atomic_size_t _ref_count = 0;
 
 	public:
 		NETKNOT_API AcceptAsyncCallback();
 		NETKNOT_API virtual ~AcceptAsyncCallback();
 
-		virtual void onRefZero() noexcept = 0;
+		virtual void on_ref_zero() noexcept = 0;
 
-		NETKNOT_FORCEINLINE size_t incRef(size_t globalRc) noexcept {
-			return ++_refCount;
+		NETKNOT_FORCEINLINE size_t inc_ref(size_t globalRc) noexcept {
+			return ++_ref_count;
 		}
 
-		NETKNOT_FORCEINLINE size_t decRef(size_t globalRc) noexcept {
-			if (!--_refCount) {
-				onRefZero();
+		NETKNOT_FORCEINLINE size_t dec_ref(size_t globalRc) noexcept {
+			if (!--_ref_count) {
+				on_ref_zero();
 				return 0;
 			}
 
-			return _refCount;
+			return _ref_count;
 		}
 
-		virtual ExceptionPointer onAccepted(Socket *socket) = 0;
+		virtual ExceptionPointer on_accepted(Socket *socket) = 0;
 	};
 
 	template <typename Callback>
@@ -204,11 +204,11 @@ namespace netknot {
 		NETKNOT_FORCEINLINE FnReadAsyncCallback(peff::Alloc *allocator, Callback &&callback) : _allocator(allocator), _callback(callback) {}
 		virtual inline ~FnReadAsyncCallback() {}
 
-		virtual void onRefZero() noexcept {
-			peff::destroyAndRelease<decltype(*this)>(_allocator, this, alignof(decltype(*this)));
+		virtual void on_ref_zero() noexcept {
+			peff::destroy_and_release<decltype(*this)>(_allocator, this, alignof(decltype(*this)));
 		}
 
-		virtual ExceptionPointer onStatusChanged(ReadAsyncTask* task) override {
+		virtual ExceptionPointer on_status_changed(ReadAsyncTask* task) override {
 			return _callback(task);
 		}
 	};
@@ -225,11 +225,11 @@ namespace netknot {
 		NETKNOT_FORCEINLINE FnWriteAsyncCallback(peff::Alloc *allocator, Callback &&callback) : _allocator(allocator), _callback(callback) {}
 		virtual inline ~FnWriteAsyncCallback() {}
 
-		virtual void onRefZero() noexcept {
-			peff::destroyAndRelease<decltype(*this)>(_allocator, this, alignof(decltype(*this)));
+		virtual void on_ref_zero() noexcept {
+			peff::destroy_and_release<decltype(*this)>(_allocator, this, alignof(decltype(*this)));
 		}
 
-		virtual ExceptionPointer onStatusChanged(WriteAsyncTask *task) override {
+		virtual ExceptionPointer on_status_changed(WriteAsyncTask *task) override {
 			return _callback(task);
 		}
 	};
@@ -246,11 +246,11 @@ namespace netknot {
 		NETKNOT_FORCEINLINE FnAcceptAsyncCallback(peff::Alloc *allocator, Callback &&callback) : _allocator(allocator), _callback(callback) {}
 		virtual inline ~FnAcceptAsyncCallback() {}
 
-		virtual void onRefZero() noexcept {
-			peff::destroyAndRelease<decltype(*this)>(_allocator, this, alignof(decltype(*this)));
+		virtual void on_ref_zero() noexcept {
+			peff::destroy_and_release<decltype(*this)>(_allocator, this, alignof(decltype(*this)));
 		}
 
-		virtual ExceptionPointer onAccepted(Socket *socket) override {
+		virtual ExceptionPointer on_accepted(Socket *socket) override {
 			return _callback(socket);
 		}
 	};
@@ -272,9 +272,9 @@ namespace netknot {
 		virtual ExceptionPointer write(const char *buffer, size_t size, size_t &szWrittenOut) = 0;
 		virtual ExceptionPointer accept(peff::Alloc *allocator, Socket *&socketOut) = 0;
 
-		virtual ExceptionPointer readAsync(peff::Alloc *allocator, const RcBufferRef &buffer, ReadAsyncCallback *callback, ReadAsyncTask *&asyncTaskOut) = 0;
-		virtual ExceptionPointer writeAsync(peff::Alloc *allocator, const RcBufferRef &buffer, WriteAsyncCallback *callback, WriteAsyncTask *&asyncTaskOut) = 0;
-		virtual ExceptionPointer acceptAsync(peff::Alloc *allocator, AcceptAsyncCallback *callback, AcceptAsyncTask *&asyncTaskOut) = 0;
+		virtual ExceptionPointer read_async(peff::Alloc *allocator, const RcBufferRef &buffer, ReadAsyncCallback *callback, ReadAsyncTask *&async_task_out) = 0;
+		virtual ExceptionPointer write_async(peff::Alloc *allocator, const RcBufferRef &buffer, WriteAsyncCallback *callback, WriteAsyncTask *&async_task_out) = 0;
+		virtual ExceptionPointer accept_async(peff::Alloc *allocator, AcceptAsyncCallback *callback, AcceptAsyncTask *&async_task_out) = 0;
 	};
 }
 

@@ -14,84 +14,84 @@ namespace netknot {
 
 	class Win32ReadAsyncTask : public ReadAsyncTask {
 	public:
-		std::mutex accessMutex;
-		peff::RcObjectPtr<peff::Alloc> selfAllocator;
+		std::mutex access_mutex;
+		peff::RcObjectPtr<peff::Alloc> self_allocator;
 		AsyncTaskStatus status = AsyncTaskStatus::Ready;
 		Win32Socket *socket;
 		RcBufferRef bufferRef;
-		size_t szRead = 0;
-		ExceptionPointer exceptPtr;
+		size_t sz_read = 0;
+		ExceptionPointer except_ptr;
 		Win32IOCPOverlapped *overlapped = nullptr;
 		peff::RcObjectPtr<ReadAsyncCallback> callback;
 
 		NETKNOT_API Win32ReadAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const RcBufferRef &bufferRef);
 		NETKNOT_API virtual ~Win32ReadAsyncTask();
 
-		NETKNOT_API virtual void onRefZero() noexcept override;
+		NETKNOT_API virtual void on_ref_zero() noexcept override;
 
-		NETKNOT_API virtual AsyncTaskStatus getStatus() override;
-		NETKNOT_API virtual ExceptionPointer &getException() override;
+		NETKNOT_API virtual AsyncTaskStatus get_status() override;
+		NETKNOT_API virtual ExceptionPointer &get_except() override;
 
-		NETKNOT_API virtual size_t getCurrentReadSize() override;
-		NETKNOT_API virtual size_t getExpectedReadSize() override;
+		NETKNOT_API virtual size_t get_cur_read_size() override;
+		NETKNOT_API virtual size_t get_expected_read_size() override;
 
-		NETKNOT_API virtual char *getBuffer() override;
-		NETKNOT_API virtual RcBufferRef getBufferRef() override;
+		NETKNOT_API virtual char *get_buffer() override;
+		NETKNOT_API virtual RcBufferRef get_buffer_ref() override;
 	};
 
 	class Win32WriteAsyncTask : public WriteAsyncTask {
 	public:
-		std::mutex accessMutex;
-		peff::RcObjectPtr<peff::Alloc> selfAllocator;
+		std::mutex access_mutex;
+		peff::RcObjectPtr<peff::Alloc> self_allocator;
 		AsyncTaskStatus status = AsyncTaskStatus::Ready;
 		Win32Socket *socket;
 		RcBufferRef bufferRef;
 		size_t szWritten = 0;
-		ExceptionPointer exceptPtr;
+		ExceptionPointer except_ptr;
 		Win32IOCPOverlapped *overlapped = nullptr;
 		peff::RcObjectPtr<WriteAsyncCallback> callback;
 
 		NETKNOT_API Win32WriteAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const RcBufferRef &bufferRef);
 		NETKNOT_API virtual ~Win32WriteAsyncTask();
 
-		NETKNOT_API virtual void onRefZero() noexcept override;
+		NETKNOT_API virtual void on_ref_zero() noexcept override;
 
-		NETKNOT_API virtual AsyncTaskStatus getStatus() override;
-		NETKNOT_API virtual ExceptionPointer &getException() override;
+		NETKNOT_API virtual AsyncTaskStatus get_status() override;
+		NETKNOT_API virtual ExceptionPointer &get_except() override;
 
-		NETKNOT_API virtual size_t getCurrentWrittenSize() override;
-		NETKNOT_API virtual size_t getExpectedWrittenSize() override;
+		NETKNOT_API virtual size_t get_cur_written_size() override;
+		NETKNOT_API virtual size_t get_expected_written_size() override;
 	};
 
 	class Win32AcceptAsyncTask : public AcceptAsyncTask {
 	public:
-		std::mutex accessMutex;
-		peff::RcObjectPtr<peff::Alloc> selfAllocator;
+		std::mutex access_mutex;
+		peff::RcObjectPtr<peff::Alloc> self_allocator;
 		AsyncTaskStatus status = AsyncTaskStatus::Ready;
-		Win32Socket *socket;
-		peff::UUID addressFamily;
-		ExceptionPointer exceptPtr;
+		peff::UniquePtr<Win32Socket, peff::DeallocableDeleter<Win32Socket>> socket;
+		peff::UUID address_family;
+		ExceptionPointer except_ptr;
 		Win32IOCPOverlapped *overlapped = nullptr;
 		peff::RcObjectPtr<AcceptAsyncCallback> callback;
 
-		NETKNOT_API Win32AcceptAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const peff::UUID &addressFamily);
+		NETKNOT_API Win32AcceptAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const peff::UUID &address_family);
 		NETKNOT_API virtual ~Win32AcceptAsyncTask();
 
-		NETKNOT_API virtual void onRefZero() noexcept override;
+		NETKNOT_API virtual void on_ref_zero() noexcept override;
 
-		NETKNOT_API virtual AsyncTaskStatus getStatus() override;
-		NETKNOT_API virtual ExceptionPointer &getException() override;
+		NETKNOT_API virtual AsyncTaskStatus get_status() override;
+		NETKNOT_API virtual ExceptionPointer &get_except() override;
 	};
 
 	class Win32Socket : public Socket {
 	public:
-		peff::RcObjectPtr<peff::Alloc> selfAllocator;
+		peff::RcObjectPtr<peff::Alloc> self_allocator;
 		SOCKET socket = INVALID_SOCKET;
 		peff::UUID socketTypeId;
-		Win32IOService *ioService;
-		peff::UUID addressFamily;
+		Win32IOService *io_service;
+		peff::UUID address_family;
 
-		NETKNOT_API Win32Socket(Win32IOService *ioService, peff::Alloc *selfAllocator, const peff::UUID &addressFamily, const peff::UUID &socketTypeId);
+		NETKNOT_API Win32Socket(Win32IOService *io_service, peff::Alloc *self_allocator, const peff::UUID &address_family, const peff::UUID &socketTypeId);
 		NETKNOT_API virtual ~Win32Socket();
 
 		NETKNOT_API virtual void dealloc() noexcept override;
@@ -106,13 +106,13 @@ namespace netknot {
 		NETKNOT_API virtual ExceptionPointer write(const char *buffer, size_t size, size_t &szWrittenOut) override;
 		NETKNOT_API virtual ExceptionPointer accept(peff::Alloc *allocator, Socket *&socketOut) override;
 
-		NETKNOT_API virtual ExceptionPointer readAsync(peff::Alloc *allocator, const RcBufferRef &buffer, ReadAsyncCallback *callback, ReadAsyncTask *&asyncTaskOut) override;
-		NETKNOT_API virtual ExceptionPointer writeAsync(peff::Alloc *allocator, const RcBufferRef &buffer, WriteAsyncCallback *callback, WriteAsyncTask *&asyncTaskOut) override;
-		NETKNOT_API virtual ExceptionPointer acceptAsync(peff::Alloc *allocator, AcceptAsyncCallback *callback, AcceptAsyncTask *&asyncTaskOut) override;
+		NETKNOT_API virtual ExceptionPointer read_async(peff::Alloc *allocator, const RcBufferRef &buffer, ReadAsyncCallback *callback, ReadAsyncTask *&async_task_out) override;
+		NETKNOT_API virtual ExceptionPointer write_async(peff::Alloc *allocator, const RcBufferRef &buffer, WriteAsyncCallback *callback, WriteAsyncTask *&async_task_out) override;
+		NETKNOT_API virtual ExceptionPointer accept_async(peff::Alloc *allocator, AcceptAsyncCallback *callback, AcceptAsyncTask *&async_task_out) override;
 	};
 
-	NETKNOT_API Win32IOCPOverlapped *allocOverlapped(peff::Alloc *allocator, size_t addrSize, const RcBufferRef &buffer, AsyncTask *asyncTask);
-	NETKNOT_API void releaseOverlapped(peff::Alloc *allocator, Win32IOCPOverlapped *overlapped);
+	NETKNOT_API Win32IOCPOverlapped *alloc_overlapped(peff::Alloc *allocator, size_t addrSize, const RcBufferRef &buffer, AsyncTask *async_task);
+	NETKNOT_API void release_overlapped(peff::Alloc *allocator, Win32IOCPOverlapped *overlapped);
 }
 
 #endif

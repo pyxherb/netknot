@@ -2,88 +2,88 @@
 
 using namespace netknot;
 
-NETKNOT_API Win32ReadAsyncTask::Win32ReadAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const RcBufferRef &bufferRef) : selfAllocator(allocator), socket(socket), bufferRef(bufferRef) {
+NETKNOT_API Win32ReadAsyncTask::Win32ReadAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const RcBufferRef &bufferRef) : self_allocator(allocator), socket(socket), bufferRef(bufferRef) {
 }
 
 NETKNOT_API Win32ReadAsyncTask::~Win32ReadAsyncTask() {
-	releaseOverlapped(selfAllocator.get(), overlapped);
+	release_overlapped(self_allocator.get(), overlapped);
 }
 
-NETKNOT_API void Win32ReadAsyncTask::onRefZero() noexcept {
-	peff::destroyAndRelease<Win32ReadAsyncTask>(selfAllocator.get(), this, alignof(Win32ReadAsyncTask));
+NETKNOT_API void Win32ReadAsyncTask::on_ref_zero() noexcept {
+	peff::destroy_and_release<Win32ReadAsyncTask>(self_allocator.get(), this, alignof(Win32ReadAsyncTask));
 }
 
-NETKNOT_API AsyncTaskStatus Win32ReadAsyncTask::getStatus() {
+NETKNOT_API AsyncTaskStatus Win32ReadAsyncTask::get_status() {
 	return status;
 }
 
-NETKNOT_API ExceptionPointer &Win32ReadAsyncTask::getException() {
-	return exceptPtr;
+NETKNOT_API ExceptionPointer &Win32ReadAsyncTask::get_except() {
+	return except_ptr;
 }
 
-NETKNOT_API size_t Win32ReadAsyncTask::getCurrentReadSize() {
-	return szRead;
+NETKNOT_API size_t Win32ReadAsyncTask::get_cur_read_size() {
+	return sz_read;
 }
 
-NETKNOT_API size_t Win32ReadAsyncTask::getExpectedReadSize() {
+NETKNOT_API size_t Win32ReadAsyncTask::get_expected_read_size() {
 	return bufferRef.size;
 }
 
-NETKNOT_API char *Win32ReadAsyncTask::getBuffer() {
+NETKNOT_API char *Win32ReadAsyncTask::get_buffer() {
 	return bufferRef.buffer->data + bufferRef.offset;
 }
 
-NETKNOT_API RcBufferRef Win32ReadAsyncTask::getBufferRef() {
+NETKNOT_API RcBufferRef Win32ReadAsyncTask::get_buffer_ref() {
 	return bufferRef;
 }
 
-NETKNOT_API Win32WriteAsyncTask::Win32WriteAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const RcBufferRef &bufferRef) : selfAllocator(allocator), socket(socket), bufferRef(bufferRef) {
+NETKNOT_API Win32WriteAsyncTask::Win32WriteAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const RcBufferRef &bufferRef) : self_allocator(allocator), socket(socket), bufferRef(bufferRef) {
 }
 
 NETKNOT_API Win32WriteAsyncTask::~Win32WriteAsyncTask() {
-	releaseOverlapped(selfAllocator.get(), overlapped);
+	release_overlapped(self_allocator.get(), overlapped);
 }
 
-NETKNOT_API void Win32WriteAsyncTask::onRefZero() noexcept {
-	peff::destroyAndRelease<Win32WriteAsyncTask>(selfAllocator.get(), this, alignof(Win32WriteAsyncTask));
+NETKNOT_API void Win32WriteAsyncTask::on_ref_zero() noexcept {
+	peff::destroy_and_release<Win32WriteAsyncTask>(self_allocator.get(), this, alignof(Win32WriteAsyncTask));
 }
 
-NETKNOT_API AsyncTaskStatus Win32WriteAsyncTask::getStatus() {
+NETKNOT_API AsyncTaskStatus Win32WriteAsyncTask::get_status() {
 	return status;
 }
 
-NETKNOT_API ExceptionPointer &Win32WriteAsyncTask::getException() {
-	return exceptPtr;
+NETKNOT_API ExceptionPointer &Win32WriteAsyncTask::get_except() {
+	return except_ptr;
 }
 
-NETKNOT_API size_t Win32WriteAsyncTask::getCurrentWrittenSize() {
+NETKNOT_API size_t Win32WriteAsyncTask::get_cur_written_size() {
 	return szWritten;
 }
 
-NETKNOT_API size_t Win32WriteAsyncTask::getExpectedWrittenSize() {
+NETKNOT_API size_t Win32WriteAsyncTask::get_expected_written_size() {
 	return bufferRef.size;
 }
 
-NETKNOT_API Win32AcceptAsyncTask::Win32AcceptAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const peff::UUID &addressFamily) : selfAllocator(allocator), socket(socket), addressFamily(addressFamily) {
+NETKNOT_API Win32AcceptAsyncTask::Win32AcceptAsyncTask(peff::Alloc *allocator, Win32Socket *socket, const peff::UUID &address_family) : self_allocator(allocator), socket(socket), address_family(address_family) {
 }
 
 NETKNOT_API Win32AcceptAsyncTask::~Win32AcceptAsyncTask() {
-	releaseOverlapped(selfAllocator.get(), overlapped);
+	release_overlapped(self_allocator.get(), overlapped);
 }
 
-NETKNOT_API void Win32AcceptAsyncTask::onRefZero() noexcept {
-	peff::destroyAndRelease<Win32AcceptAsyncTask>(selfAllocator.get(), this, alignof(Win32AcceptAsyncTask));
+NETKNOT_API void Win32AcceptAsyncTask::on_ref_zero() noexcept {
+	peff::destroy_and_release<Win32AcceptAsyncTask>(self_allocator.get(), this, alignof(Win32AcceptAsyncTask));
 }
 
-NETKNOT_API AsyncTaskStatus Win32AcceptAsyncTask::getStatus() {
+NETKNOT_API AsyncTaskStatus Win32AcceptAsyncTask::get_status() {
 	return status;
 }
 
-NETKNOT_API ExceptionPointer &Win32AcceptAsyncTask::getException() {
-	return exceptPtr;
+NETKNOT_API ExceptionPointer &Win32AcceptAsyncTask::get_except() {
+	return except_ptr;
 }
 
-NETKNOT_API Win32Socket::Win32Socket(Win32IOService *ioService, peff::Alloc *selfAllocator, const peff::UUID &addressFamily, const peff::UUID &socketTypeId) : ioService(ioService), selfAllocator(selfAllocator), socket(INVALID_SOCKET), addressFamily(addressFamily), socketTypeId(socketTypeId) {
+NETKNOT_API Win32Socket::Win32Socket(Win32IOService *io_service, peff::Alloc *self_allocator, const peff::UUID &address_family, const peff::UUID &socketTypeId) : io_service(io_service), self_allocator(self_allocator), socket(INVALID_SOCKET), address_family(address_family), socketTypeId(socketTypeId) {
 }
 
 NETKNOT_API Win32Socket::~Win32Socket() {
@@ -91,7 +91,7 @@ NETKNOT_API Win32Socket::~Win32Socket() {
 }
 
 NETKNOT_API void Win32Socket::dealloc() noexcept {
-	peff::destroyAndRelease<Win32Socket>(selfAllocator.get(), this, alignof(Win32Socket));
+	peff::destroy_and_release<Win32Socket>(self_allocator.get(), this, alignof(Win32Socket));
 }
 
 NETKNOT_API void Win32Socket::close() {
@@ -107,7 +107,7 @@ NETKNOT_API ExceptionPointer Win32Socket::bind(const TranslatedAddress *address)
 	int result = ::bind(socket, (const sockaddr *)addr->data, (int)addr->size);
 
 	if (result == SOCKET_ERROR)
-		return wsaLastErrorToExcept(ioService->selfAllocator.get(), WSAGetLastError());
+		return wsaLastErrorToExcept(io_service->self_allocator.get(), WSAGetLastError());
 
 	return {};
 }
@@ -116,7 +116,7 @@ NETKNOT_API ExceptionPointer Win32Socket::listen(size_t backlog) {
 	int result = ::listen(socket, (int)backlog);
 
 	if (result == SOCKET_ERROR)
-		return wsaLastErrorToExcept(ioService->selfAllocator.get(), WSAGetLastError());
+		return wsaLastErrorToExcept(io_service->self_allocator.get(), WSAGetLastError());
 
 	return {};
 }
@@ -127,7 +127,7 @@ NETKNOT_API ExceptionPointer Win32Socket::connect(const TranslatedAddress *addre
 	int result = ::connect(socket, (const sockaddr *)addr->data, (int)addr->size);
 
 	if (result == SOCKET_ERROR)
-		return wsaLastErrorToExcept(ioService->selfAllocator.get(), WSAGetLastError());
+		return wsaLastErrorToExcept(io_service->self_allocator.get(), WSAGetLastError());
 
 	return {};
 }
@@ -136,7 +136,7 @@ NETKNOT_API ExceptionPointer Win32Socket::read(char *buffer, size_t size, size_t
 	int result = ::recv(socket, buffer, (int)size, 0);
 
 	if (result == SOCKET_ERROR)
-		return wsaLastErrorToExcept(ioService->selfAllocator.get(), WSAGetLastError());
+		return wsaLastErrorToExcept(io_service->self_allocator.get(), WSAGetLastError());
 
 	szReadOut = (size_t)result;
 
@@ -146,7 +146,7 @@ NETKNOT_API ExceptionPointer Win32Socket::write(const char *buffer, size_t size,
 	int result = ::send(socket, buffer, (int)size, 0);
 
 	if (result == SOCKET_ERROR)
-		return wsaLastErrorToExcept(ioService->selfAllocator.get(), WSAGetLastError());
+		return wsaLastErrorToExcept(io_service->self_allocator.get(), WSAGetLastError());
 
 	szWrittenOut = (size_t)result;
 
@@ -155,36 +155,36 @@ NETKNOT_API ExceptionPointer Win32Socket::write(const char *buffer, size_t size,
 
 NETKNOT_API ExceptionPointer Win32Socket::accept(peff::Alloc *allocator, Socket *&socketOut) {
 	int addrLen = 0;
-	SOCKET newSocket = ::accept(socket, NULL, &addrLen);
+	SOCKET new_socket = ::accept(socket, NULL, &addrLen);
 
-	if (newSocket == INVALID_SOCKET)
-		return wsaLastErrorToExcept(ioService->selfAllocator.get(), WSAGetLastError());
+	if (new_socket == INVALID_SOCKET)
+		return wsaLastErrorToExcept(io_service->self_allocator.get(), WSAGetLastError());
 
 	std::unique_ptr<Win32Socket, peff::DeallocableDeleter<Win32Socket>> p(
-		peff::allocAndConstruct<Win32Socket>(allocator, alignof(Win32Socket), ioService, allocator, addressFamily, socketTypeId));
+		peff::alloc_and_construct<Win32Socket>(allocator, alignof(Win32Socket), io_service, allocator, address_family, socketTypeId));
 
 	if (!p)
 		return OutOfMemoryError::alloc();
 
-	p->socket = newSocket;
+	p->socket = new_socket;
 
 	socketOut = p.release();
 
 	return {};
 }
 
-NETKNOT_API ExceptionPointer Win32Socket::readAsync(peff::Alloc *allocator, const RcBufferRef &buffer, ReadAsyncCallback *callback, ReadAsyncTask *&asyncTaskOut) {
+NETKNOT_API ExceptionPointer Win32Socket::read_async(peff::Alloc *allocator, const RcBufferRef &buffer, ReadAsyncCallback *callback, ReadAsyncTask *&async_task_out) {
 	if (buffer.buffer->size > ULONG_MAX)
 		return BufferIsTooBigError::alloc();
 	peff::RcObjectPtr<Win32ReadAsyncTask> task(
-		peff::allocAndConstruct<Win32ReadAsyncTask>(allocator, alignof(Win32ReadAsyncTask), allocator, this, buffer));
+		peff::alloc_and_construct<Win32ReadAsyncTask>(allocator, alignof(Win32ReadAsyncTask), allocator, this, buffer));
 
 	if (!task)
 		return OutOfMemoryError::alloc();
 
 	Win32IOCPOverlapped *overlapped;
 
-	if (!(overlapped = (Win32IOCPOverlapped *)allocOverlapped(allocator, 0, buffer, task.get()))) {
+	if (!(overlapped = (Win32IOCPOverlapped *)alloc_overlapped(allocator, 0, buffer, task.get()))) {
 		return OutOfMemoryError::alloc();
 	}
 
@@ -197,29 +197,29 @@ NETKNOT_API ExceptionPointer Win32Socket::readAsync(peff::Alloc *allocator, cons
 	if (result == SOCKET_ERROR) {
 		int errorCode = WSAGetLastError();
 		if (errorCode != WSA_IO_PENDING)
-			return wsaLastErrorToExcept(ioService->selfAllocator.get(), errorCode);
+			return wsaLastErrorToExcept(io_service->self_allocator.get(), errorCode);
 	}
 
-	NETKNOT_RETURN_IF_EXCEPT(ioService->postAsyncTask(task.get()));
+	NETKNOT_RETURN_IF_EXCEPT(io_service->post_async_task(task.get()));
 
-	task->incRef(0);
-	asyncTaskOut = task.get();
+	task->inc_ref(0);
+	async_task_out = task.get();
 
 	return {};
 }
 
-NETKNOT_API ExceptionPointer Win32Socket::writeAsync(peff::Alloc *allocator, const RcBufferRef &buffer, WriteAsyncCallback *callback, WriteAsyncTask *&asyncTaskOut) {
+NETKNOT_API ExceptionPointer Win32Socket::write_async(peff::Alloc *allocator, const RcBufferRef &buffer, WriteAsyncCallback *callback, WriteAsyncTask *&async_task_out) {
 	if (buffer.buffer->size > ULONG_MAX)
 		return BufferIsTooBigError::alloc();
 	std::unique_ptr<Win32WriteAsyncTask, AsyncTaskDeleter> task(
-		peff::allocAndConstruct<Win32WriteAsyncTask>(allocator, alignof(Win32WriteAsyncTask), allocator, this, buffer));
+		peff::alloc_and_construct<Win32WriteAsyncTask>(allocator, alignof(Win32WriteAsyncTask), allocator, this, buffer));
 
 	if (!task)
 		return OutOfMemoryError::alloc();
 
 	Win32IOCPOverlapped *overlapped;
 
-	if (!(overlapped = (Win32IOCPOverlapped *)allocOverlapped(allocator, 0, buffer, task.get()))) {
+	if (!(overlapped = (Win32IOCPOverlapped *)alloc_overlapped(allocator, 0, buffer, task.get()))) {
 		return OutOfMemoryError::alloc();
 	}
 
@@ -230,69 +230,68 @@ NETKNOT_API ExceptionPointer Win32Socket::writeAsync(peff::Alloc *allocator, con
 	int result = WSASend(socket, &overlapped->buf, 1, &overlapped->szOperated, 0, overlapped, NULL);
 
 	if (result == SOCKET_ERROR)
-		return wsaLastErrorToExcept(ioService->selfAllocator.get(), WSAGetLastError());
+		return wsaLastErrorToExcept(io_service->self_allocator.get(), WSAGetLastError());
 
-	NETKNOT_RETURN_IF_EXCEPT(ioService->postAsyncTask(task.get()));
+	NETKNOT_RETURN_IF_EXCEPT(io_service->post_async_task(task.get()));
 
-	task->incRef(0);
-	asyncTaskOut = task.release();
+	task->inc_ref(0);
+	async_task_out = task.release();
 
 	return {};
 }
 
-NETKNOT_API ExceptionPointer Win32Socket::acceptAsync(peff::Alloc *allocator, AcceptAsyncCallback *callback, AcceptAsyncTask *&asyncTaskOut) {
+NETKNOT_API ExceptionPointer Win32Socket::accept_async(peff::Alloc *allocator, AcceptAsyncCallback *callback, AcceptAsyncTask *&async_task_out) {
 	std::unique_ptr<Win32AcceptAsyncTask, AsyncTaskDeleter> task(
-		peff::allocAndConstruct<Win32AcceptAsyncTask>(allocator, alignof(Win32AcceptAsyncTask), allocator, this, addressFamily));
+		peff::alloc_and_construct<Win32AcceptAsyncTask>(allocator, alignof(Win32AcceptAsyncTask), allocator, nullptr, address_family));
 
 	if (!task)
 		return OutOfMemoryError::alloc();
 
-	std::unique_ptr<Win32Socket, peff::DeallocableDeleter<Win32Socket>> newSocket;
+	std::unique_ptr<Win32Socket, peff::DeallocableDeleter<Win32Socket>> new_socket;
 	{
 		Socket *s;
 
-		NETKNOT_RETURN_IF_EXCEPT(ioService->createSocket(allocator, addressFamily, socketTypeId, s));
+		NETKNOT_RETURN_IF_EXCEPT(io_service->create_socket(allocator, address_family, socketTypeId, s));
 
-		newSocket = std::unique_ptr<Win32Socket, peff::DeallocableDeleter<Win32Socket>>((Win32Socket *)s);
+		new_socket = std::unique_ptr<Win32Socket, peff::DeallocableDeleter<Win32Socket>>((Win32Socket *)s);
 	}
 
-	size_t compiledAddrSize;
+	size_t compiled_addr_size;
 
 	{
-		Address addr(addressFamily);
+		Address addr(address_family);
 
-		ioService->translateAddress(nullptr, &addr, nullptr, &compiledAddrSize).unwrap();
+		io_service->translate_addr(nullptr, &addr, nullptr, &compiled_addr_size).unwrap();
 
-		compiledAddrSize += 16;
+		compiled_addr_size += 16;
 	}
 
 	Win32IOCPOverlapped *overlapped;
 
-	if (!(overlapped = (Win32IOCPOverlapped *)allocOverlapped(allocator, compiledAddrSize, RcBufferRef{}, task.get()))) {
+	if (!(overlapped = (Win32IOCPOverlapped *)alloc_overlapped(allocator, compiled_addr_size, RcBufferRef{}, task.get()))) {
 		return OutOfMemoryError::alloc();
 	}
 
 	task->overlapped = overlapped;
 
-	task->socket = newSocket.get();
 	task->callback = callback;
 
-	if (!AcceptEx(socket, newSocket->socket, &overlapped[1], 0, (DWORD)overlapped->addrSize, (DWORD)overlapped->addrSize, &overlapped->szOperated, overlapped)) {
+	if (!AcceptEx(socket, new_socket->socket, &overlapped[1], 0, (DWORD)overlapped->addrSize, (DWORD)overlapped->addrSize, &overlapped->szOperated, overlapped)) {
 		int lastError = WSAGetLastError();
 		if (lastError != WSA_IO_PENDING)
-			return wsaLastErrorToExcept(ioService->selfAllocator.get(), lastError);
+			return wsaLastErrorToExcept(io_service->self_allocator.get(), lastError);
 	}
 
-	newSocket.release();
+	task->socket = new_socket.release();
 
-	NETKNOT_RETURN_IF_EXCEPT(ioService->postAsyncTask(task.get()));
-	task->incRef(0);
-	asyncTaskOut = task.release();
+	NETKNOT_RETURN_IF_EXCEPT(io_service->post_async_task(task.get()));
+	task->inc_ref(0);
+	async_task_out = task.release();
 
 	return {};
 }
 
-NETKNOT_API Win32IOCPOverlapped *netknot::allocOverlapped(peff::Alloc *allocator, size_t addrSize, const RcBufferRef &buffer, AsyncTask *asyncTask) {
+NETKNOT_API Win32IOCPOverlapped *netknot::alloc_overlapped(peff::Alloc *allocator, size_t addrSize, const RcBufferRef &buffer, AsyncTask *async_task) {
 	Win32IOCPOverlapped *overlapped = nullptr;
 
 	if (!(overlapped = (Win32IOCPOverlapped *)allocator->alloc(sizeof(Win32IOCPOverlapped) + addrSize /* Don't know why it just needs it, 16 more bytes for storage. */ + 16, alignof(Win32IOCPOverlapped)))) {
@@ -305,23 +304,21 @@ NETKNOT_API Win32IOCPOverlapped *netknot::allocOverlapped(peff::Alloc *allocator
 	if (buffer.buffer) {
 		overlapped->buf.len = (ULONG)(buffer.buffer->size - buffer.offset);
 		overlapped->buf.buf = buffer.buffer->data + buffer.offset;
-		buffer.buffer->incRef(0);
+		buffer.buffer->inc_ref(0);
 		overlapped->rcBuffer = buffer.buffer.get();
 	}
 
-	if (asyncTask) {
-		asyncTask->incRef(0);
-		overlapped->asyncTask = asyncTask;
+	if (async_task) {
+		overlapped->async_task = async_task;
 	}
 
 	return overlapped;
 }
 
-NETKNOT_API void netknot::releaseOverlapped(peff::Alloc *allocator, Win32IOCPOverlapped *overlapped) {
+NETKNOT_API void netknot::release_overlapped(peff::Alloc *allocator, Win32IOCPOverlapped *overlapped) {
 	if (overlapped) {
 		if (overlapped->rcBuffer)
-			overlapped->rcBuffer->decRef(0);
-		overlapped->asyncTask->decRef(0);
+			overlapped->rcBuffer->dec_ref(0);
 		allocator->release(overlapped, sizeof(Win32IOCPOverlapped) + overlapped->addrSize + 16, alignof(Win32IOCPOverlapped));
 	}
 }

@@ -2,17 +2,17 @@
 
 using namespace netknot;
 
-NETKNOT_API UnixTranslatedAddress::UnixTranslatedAddress(peff::Alloc *selfAllocator) : selfAllocator(selfAllocator) {
+NETKNOT_API UnixTranslatedAddress::UnixTranslatedAddress(peff::Alloc *self_allocator) : self_allocator(self_allocator) {
 }
 
 NETKNOT_API UnixTranslatedAddress::~UnixTranslatedAddress() {
 	if (data) {
-		selfAllocator->release(data, size, 1);
+		self_allocator->release(data, size, 1);
 	}
 }
 
 NETKNOT_API void UnixTranslatedAddress::dealloc() noexcept {
-	peff::destroyAndRelease<UnixTranslatedAddress>(selfAllocator.get(), this, alignof(UnixTranslatedAddress));
+	peff::destroy_and_release<UnixTranslatedAddress>(self_allocator.get(), this, alignof(UnixTranslatedAddress));
 }
 
 NETKNOT_API void *UnixIOService::_workerThreadProc(void *lpThreadParameter) {
@@ -24,29 +24,29 @@ NETKNOT_API void *UnixIOService::_workerThreadProc(void *lpThreadParameter) {
 		// TODO: Implement it.
 	}
 
-	pthread_cond_broadcast(&tld->ioService->terminateNotifyConditionVar);
+	pthread_cond_broadcast(&tld->io_service->terminateNotifyConditionVar);
 	return 0;
 }
 
 NETKNOT_API UnixIOService::ThreadLocalData::~ThreadLocalData() {
-	if (hThread.hasValue()) {
+	if (hThread.has_value()) {
 		terminate = true;
 		pthread_join(hThread, nullptr);
 	}
 }
 
-NETKNOT_API UnixIOService::UnixIOService(peff::Alloc *selfAllocator)
-	: selfAllocator(selfAllocator),
-	  threadLocalData(selfAllocator),
-	  currentTasks(selfAllocator) {
+NETKNOT_API UnixIOService::UnixIOService(peff::Alloc *self_allocator)
+	: self_allocator(self_allocator),
+	  threadLocalData(self_allocator),
+	  cur_tasks(self_allocator) {
 }
 
 NETKNOT_API UnixIOService::~UnixIOService() {
 }
 
-NETKNOT_API UnixIOService *UnixIOService::alloc(peff::Alloc *selfAllocator) {
+NETKNOT_API UnixIOService *UnixIOService::alloc(peff::Alloc *self_allocator) {
 	std::unique_ptr<UnixIOService, peff::DeallocableDeleter<UnixIOService>> p(
-		peff::allocAndConstruct<UnixIOService>(selfAllocator, alignof(UnixIOService), selfAllocator));
+		peff::alloc_and_construct<UnixIOService>(self_allocator, alignof(UnixIOService), self_allocator));
 
 	if (!p)
 		return nullptr;
@@ -102,21 +102,21 @@ NETKNOT_API ExceptionPointer UnixIOService::stop() {
 }
 
 NETKNOT_API ExceptionPointer UnixIOService::postAsyncTask(AsyncTask *task) noexcept {
-	peff::ScopeGuard currentTasksMutexGuard([this]() noexcept {
-		pthread_mutex_unlock(&currentTasksMutex);
+	peff::ScopeGuard cur_tasks_mutex_guard([this]() noexcept {
+		pthread_mutex_unlock(&cur_tasks_mutex);
 	});
 
-	pthread_mutex_lock(&currentTasksMutex);
+	pthread_mutex_lock(&cur_tasks_mutex);
 
-	if (!currentTasks.insert(task))
+	if (!cur_tasks.insert(task))
 		return OutOfMemoryError::alloc();
 
 	return {};
 }
 
-NETKNOT_API ExceptionPointer UnixIOService::createSocket(peff::Alloc *allocator, const peff::UUID &addressFamily, const peff::UUID &socketType, Socket *&socketOut) noexcept {
+NETKNOT_API ExceptionPointer UnixIOService::createSocket(peff::Alloc *allocator, const peff::UUID &address_family, const peff::UUID &socketType, Socket *&socketOut) noexcept {
 	std::unique_ptr<UnixSocket, peff::DeallocableDeleter<UnixSocket>> p(
-		peff::allocAndConstruct<UnixSocket>(allocator, alignof(UnixSocket), this, addressFamily, socketType));
+		peff::alloc_and_construct<UnixSocket>(allocator, alignof(UnixSocket), this, address_family, socketType));
 
 	if (!p)
 		return OutOfMemoryError::alloc();
@@ -124,9 +124,9 @@ NETKNOT_API ExceptionPointer UnixIOService::createSocket(peff::Alloc *allocator,
 	int &s = p->socket;
 
 	int af;
-	if (addressFamily == ADDRFAM_IPV4) {
+	if (address_family == ADDRFAM_IPV4) {
 		af = AF_INET;
-	} else if (addressFamily == ADDRFAM_IPV6) {
+	} else if (address_family == ADDRFAM_IPV6) {
 		af = AF_INET6;
 	} else {
 		std::terminate();
@@ -150,7 +150,7 @@ NETKNOT_API ExceptionPointer UnixIOService::createSocket(peff::Alloc *allocator,
 }
 
 NETKNOT_API ExceptionPointer UnixIOService::translateAddress(peff::Alloc *allocator, const Address *address, TranslatedAddress **compiledAddressOut, size_t *compiledAddressSizeOut) noexcept {
-	if (address->addressFamily == ADDRFAM_IPV4) {
+	if (address->address_family == ADDRFAM_IPV4) {
 		sockaddr_in sa = { 0 };
 
 		if (!compiledAddressOut) {
@@ -166,7 +166,7 @@ NETKNOT_API ExceptionPointer UnixIOService::translateAddress(peff::Alloc *alloca
 			}
 
 			std::unique_ptr<UnixTranslatedAddress, peff::DeallocableDeleter<UnixTranslatedAddress>>
-				compiledAddress(peff::allocAndConstruct<UnixTranslatedAddress>(allocator, alignof(UnixTranslatedAddress), allocator));
+				compiledAddress(peff::alloc_and_construct<UnixTranslatedAddress>(allocator, alignof(UnixTranslatedAddress), allocator));
 
 			if (!compiledAddress)
 				return OutOfMemoryError::alloc();
@@ -182,14 +182,14 @@ NETKNOT_API ExceptionPointer UnixIOService::translateAddress(peff::Alloc *alloca
 		}
 
 		return {};
-	} else if (address->addressFamily == ADDRFAM_IPV6) {
+	} else if (address->address_family == ADDRFAM_IPV6) {
 	}
 
 	std::terminate();
 }
 
-ExceptionPointer UnixIOService::detranslateAddress(peff::Alloc *allocator, const peff::UUID &addressFamily, const TranslatedAddress *address, Address &addressOut) noexcept {
-	if (addressFamily == ADDRFAM_IPV4) {
+ExceptionPointer UnixIOService::detranslateAddress(peff::Alloc *allocator, const peff::UUID &address_family, const TranslatedAddress *address, Address &addressOut) noexcept {
+	if (address_family == ADDRFAM_IPV4) {
 		sockaddr_in *sa = (sockaddr_in *)((UnixTranslatedAddress *)address)->data;
 
 		IPv4Address &ipv4Address = (IPv4Address &)addressOut;
@@ -202,30 +202,30 @@ ExceptionPointer UnixIOService::detranslateAddress(peff::Alloc *allocator, const
 		ipv4Address.port = sa->sin_port;
 
 		return {};
-	} else if (addressFamily == ADDRFAM_IPV6) {
+	} else if (address_family == ADDRFAM_IPV6) {
 	}
 
 	std::terminate();
 }
 
 NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService *&ioServiceOut, const IOServiceCreationParams &params) noexcept {
-	std::unique_ptr<UnixIOService, peff::DeallocableDeleter<UnixIOService>> ioService(UnixIOService::alloc(params.allocator.get()));
+	std::unique_ptr<UnixIOService, peff::DeallocableDeleter<UnixIOService>> io_service(UnixIOService::alloc(params.allocator.get()));
 
-	if (!ioService)
+	if (!io_service)
 		return OutOfMemoryError::alloc();
 
-	if (!ioService->threadLocalData.resizeUninitialized(params.nWorkerThreads)) {
+	if (!io_service->threadLocalData.resize_uninit(params.nWorkerThreads)) {
 		return OutOfMemoryError::alloc();
 	}
 
 	for (size_t i = 0; i < params.nWorkerThreads; ++i) {
-		peff::constructAt(&ioService->threadLocalData.at(i), ioService.get(), i, params.allocator.get());
+		peff::construct_at(&io_service->threadLocalData.at(i), io_service.get(), i, params.allocator.get());
 	}
 
 	for (size_t i = 0; i < params.nWorkerThreads; ++i) {
-		UnixIOService::ThreadLocalData &tld = ioService->threadLocalData.at(i);
+		UnixIOService::ThreadLocalData &tld = io_service->threadLocalData.at(i);
 
-		peff::ScopeGuard removeThreadHandleGuard([&tld]() noexcept {
+		peff::ScopeGuard remove_thread_handle_guard([&tld]() noexcept {
 			tld.hThread.reset();
 		});
 
@@ -247,10 +247,10 @@ NETKNOT_API ExceptionPointer netknot::createDefaultIOService(IOService *&ioServi
 			}
 		}
 
-		removeThreadHandleGuard.release();
+		remove_thread_handle_guard.release();
 	}
 
-	ioServiceOut = ioService.release();
+	ioServiceOut = io_service.release();
 
 	return {};
 }

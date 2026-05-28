@@ -8,7 +8,7 @@ NETKNOT_API TranslatedAddress::TranslatedAddress() {
 NETKNOT_API TranslatedAddress::~TranslatedAddress() {
 }
 
-NETKNOT_API AsyncTask::AsyncTask(AsyncTaskType taskType) : _taskType(taskType) {
+NETKNOT_API AsyncTask::AsyncTask(AsyncTaskType taskType) : _task_type(taskType) {
 }
 
 NETKNOT_API AsyncTask::~AsyncTask() {

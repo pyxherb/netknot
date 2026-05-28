@@ -31,7 +31,7 @@ NETKNOT_API NetworkError::NetworkError(peff::Alloc *allocator, NetworkErrorCode 
 NETKNOT_API NetworkError::~NetworkError() {}
 
 NETKNOT_API void NetworkError::dealloc() {
-	peff::destroyAndRelease<NetworkError>(allocator.get(), this, sizeof(std::max_align_t));
+	peff::destroy_and_release<NetworkError>(allocator.get(), this, sizeof(std::max_align_t));
 }
 
 NETKNOT_API NetworkError *NetworkError::alloc(peff::Alloc *allocator, NetworkErrorCode errorCode) noexcept {
@@ -40,7 +40,7 @@ NETKNOT_API NetworkError *NetworkError::alloc(peff::Alloc *allocator, NetworkErr
 	if (!buf)
 		return nullptr;
 
-	peff::constructAt<NetworkError>((NetworkError *)buf, allocator, errorCode);
+	peff::construct_at<NetworkError>((NetworkError *)buf, allocator, errorCode);
 
 	return (NetworkError *)buf;
 }
