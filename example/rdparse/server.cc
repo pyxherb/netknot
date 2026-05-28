@@ -142,7 +142,7 @@ netknot::ExceptionPointer HttpAcceptAsyncCallback::on_accepted(netknot::Socket *
 			  http_server->allocator.get(), alignof(HttpReadAsyncCallback),
 			  http_server,
 			  conn.get(),
-			  &peff::g_null_alloc,
+			  http_server->allocator.get(),
 			  http_server->allocator.get())))
 		return netknot::OutOfMemoryError::alloc();
 	NETKNOT_RETURN_IF_EXCEPT(conn->socket->read_async(
